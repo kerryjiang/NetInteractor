@@ -10,7 +10,7 @@ namespace NetInteractor.Test
     {
         private InteractConfig GetConfigFromFile(string fileName)
         {
-            return ConfigFactory.DeserializeXml<InteractConfig>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", fileName)));
+            return ConfigFactory.DeserializeXml<InteractConfig>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Scripts", fileName)));
         }
 
         [Fact]

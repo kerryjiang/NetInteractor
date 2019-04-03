@@ -18,7 +18,7 @@ namespace NetInteractor.Test
             var services = new ServiceCollection();
             services.AddTransient<IWebAccessor, HttpWebAccessor>();
 
-            var config = ConfigFactory.DeserializeXml<InteractConfig>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", "Shop.config")));
+            var config = ConfigFactory.DeserializeXml<InteractConfig>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Scripts", "Shop.config")));
 
             var executor = new InterationExecutor(services.BuildServiceProvider());
 
