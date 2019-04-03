@@ -1,4 +1,5 @@
-# NetInteractor
+# NetInteractor [![Build Status](https://travis-ci.org/kerryjiang/NetInteractor.svg?branch=master)](https://travis-ci.org/kerryjiang/NetInteractor)
+
 Web operation automation library in C# (.NET Core)
 
 It can be used for the purposes below:
