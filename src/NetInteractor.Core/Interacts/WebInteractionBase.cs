@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using NetInteractor.Core.Config;
 using HtmlAgilityPack;
+using System.Net;
 
 namespace NetInteractor.Core.Interacts
 {
@@ -32,9 +33,22 @@ namespace NetInteractor.Core.Interacts
 
         private List<KeyValuePair<string, XpathInfo>> xpaths = new List<KeyValuePair<string, XpathInfo>>();
 
+        private int[] expectedHttpStatusCodes;
+
         protected WebInteractionBase(TConfig config)
             : base(config)
         {
+            if (!string.IsNullOrEmpty(config.ExpectedHttpStatusCodes))
+            {
+                expectedHttpStatusCodes = config.ExpectedHttpStatusCodes.Split(',')
+                    .Select(i => int.Parse(i.Trim()))
+                    .ToArray();
+            }
+            else
+            {
+                expectedHttpStatusCodes = new int[] { 200 };
+            }
+
             if (Config.Outputs != null && Config.Outputs.Any())
             {
                 foreach (var output in Config.Outputs)
@@ -70,6 +84,15 @@ namespace NetInteractor.Core.Interacts
             try
             {
                 response = await MakeRequest(context);
+
+                if (!expectedHttpStatusCodes.Contains(response.StatusCode))
+                {
+                    return new InteractionResult
+                    {
+                        Ok = false,
+                        Message = ((HttpStatusCode)response.StatusCode).ToString()
+                    };
+                }
             }
             catch (Exception e)
             {

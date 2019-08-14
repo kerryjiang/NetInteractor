@@ -16,6 +16,9 @@ namespace NetInteractor.Core.Config
         [XmlElement("output")]
         public OutputValueConfig[] Outputs { get; set; }
 
+        [XmlAttribute("expectedHttpStatusCodes")]        
+        public string ExpectedHttpStatusCodes { get; set; }
+
         public abstract IInteractAction GetAction();
     }
 }
