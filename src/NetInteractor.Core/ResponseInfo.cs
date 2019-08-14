@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
+using System.Net;
 
 namespace NetInteractor.Core
 {
@@ -14,5 +15,7 @@ namespace NetInteractor.Core
         public string Url { get; set; }
 
         public string Html { get; set; }
+
+        public CookieCollection Cookies { get; set; }
     }
 }

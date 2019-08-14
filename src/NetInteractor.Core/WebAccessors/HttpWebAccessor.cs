@@ -37,6 +37,8 @@ namespace NetInteractor.Core.WebAccessors
                 html = await reader.ReadToEndAsync();
             }
 
+            cookieContainer.Add(response.Cookies);
+
             return new ResponseInfo
             {
                 StatusCode = (int)response.StatusCode,
@@ -66,10 +68,21 @@ namespace NetInteractor.Core.WebAccessors
             await requestStream.FlushAsync();
             requestStream.Close();
 
-            var response = (await request.GetResponseAsync()) as HttpWebResponse;
+            try
+            {
+                return await GetResultFromResponse((await request.GetResponseAsync()) as HttpWebResponse);
+            }
+            catch (WebException we)
+            {
+                return await GetResultFromResponse((HttpWebResponse)we.Response);
+            }
+        }
 
+        private async Task<ResponseInfo> GetResultFromResponse(HttpWebResponse response)
+        {
+            var statusCode = (int)response.StatusCode;
             var html = string.Empty;
-            
+
             using (var reader = new StreamReader(response.GetResponseStream()))
             {
                 html = await reader.ReadToEndAsync();
