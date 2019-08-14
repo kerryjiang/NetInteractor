@@ -33,7 +33,7 @@ namespace NetInteractor.Core
 
                     if (endPos >= 0)
                     {                     
-                        var outputPropertyName = value.Substring(pos, endPos - pos - 2);
+                        var outputPropertyName = value.Substring(pos + 2, endPos - pos - 2);
                         value = value.Substring(0, pos) + GetOutputValue(context.Outputs, outputPropertyName) + value.Substring(endPos + 1);
                         continue;
                     }
@@ -47,7 +47,7 @@ namespace NetInteractor.Core
 
                     if (endPos >= 0)
                     {                     
-                        var inputPropertyName = value.Substring(pos, endPos - pos - 2);
+                        var inputPropertyName = value.Substring(pos + 2, endPos - pos - 2);
                         value = value.Substring(0, pos) + GetOutputValue(context.Inputs, inputPropertyName) + value.Substring(endPos + 1);
                         continue;
                     }
