@@ -12,46 +12,43 @@ namespace NetInteractor.Core.WebAccessors
     {
         private string userAgent;
         
-        private CookieContainer cookieContainer;
+        public CookieContainer CookieContainer { get; set; }
 
-        public HttpWebAccessor()
+        public HttpWebAccessor(CookieContainer cookieContainer)
         {
             userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36";
-            cookieContainer = new CookieContainer();
+            CookieContainer = cookieContainer;
+        }
+
+        public HttpWebAccessor()
+            : this(new CookieContainer())
+        {
+
         }
 
         public async Task<ResponseInfo> GetAsync(string url)
         {
             var request = WebRequest.Create(url) as HttpWebRequest;
 
-            request.CookieContainer = cookieContainer;
+            request.CookieContainer = CookieContainer;
             request.UserAgent = userAgent;
             request.Method = "GET";
 
-            var response = (await request.GetResponseAsync()) as HttpWebResponse;
-
-            var html = string.Empty;
-            
-            using (var reader = new StreamReader(response.GetResponseStream()))
+            try
             {
-                html = await reader.ReadToEndAsync();
+                return await GetResultFromResponse((await request.GetResponseAsync()) as HttpWebResponse);
             }
-
-            cookieContainer.Add(response.Cookies);
-
-            return new ResponseInfo
+            catch (WebException we)
             {
-                StatusCode = (int)response.StatusCode,
-                Html = html,
-                Url = response.ResponseUri?.ToString()
-            };
+                return await GetResultFromResponse((HttpWebResponse)we.Response);
+            }
         }
 
         public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues)
         {
             var request = WebRequest.Create(url) as HttpWebRequest;
 
-            request.CookieContainer = cookieContainer;
+            request.CookieContainer = CookieContainer;
             request.UserAgent = userAgent;
             request.Method = "POST";
             request.ContentType = "application/x-www-form-urlencoded";
@@ -87,6 +84,9 @@ namespace NetInteractor.Core.WebAccessors
             {
                 html = await reader.ReadToEndAsync();
             }
+
+            if (response.Cookies != null)
+                CookieContainer.Add(response.Cookies);
 
             return new ResponseInfo
             {

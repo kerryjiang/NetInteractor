@@ -106,10 +106,17 @@ namespace NetInteractor.Core.Interacts
 
             if (!ValidateOutput(context.Outputs, out string message))
             {
-                return new InteractionResult { Ok = false, Message = message };
+                return new InteractionResult
+                {
+                    Ok = false,
+                    Message = message
+                };
             }
 
-            return new InteractionResult { Ok = true };
+            return new InteractionResult
+            {
+                Ok = true
+            };
         }
 
         private NameValueCollection GetOutputValues(PageInfo page)
