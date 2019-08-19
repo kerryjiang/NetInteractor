@@ -82,7 +82,11 @@ namespace NetInteractor.Core.Interacts
             
             if (!string.IsNullOrEmpty(form.Action))
             {
-                if (form.Action.StartsWith("/"))
+                if (form.Action.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || form.Action.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                {
+                    url = form.Action;
+                }
+                else if (form.Action.StartsWith("/"))
                 {
                     var uri = new Uri(url);
                     url = uri.GetLeftPart(UriPartial.Authority) + form.Action;
