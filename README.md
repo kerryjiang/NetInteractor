@@ -1,4 +1,6 @@
-# NetInteractor [![Build Status](https://travis-ci.org/kerryjiang/NetInteractor.svg?branch=master)](https://travis-ci.org/kerryjiang/NetInteractor)
+# NetInteractor
+[![Build Status](https://travis-ci.org/kerryjiang/NetInteractor.svg?branch=master)](https://travis-ci.org/kerryjiang/NetInteractor)
+[![NuGet Version](https://img.shields.io/nuget/v/NetInteractor.Core.svg?style=flat)](https://www.nuget.org/packages/NetInteractor.Core/)
 
 Web operation automation library in C# (.NET Core)
 
