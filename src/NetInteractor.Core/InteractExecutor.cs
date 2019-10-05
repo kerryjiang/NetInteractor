@@ -4,12 +4,26 @@ using System.Collections.Specialized;
 using System.Threading.Tasks;
 using NetInteractor.Core.Config;
 using Microsoft.Extensions.DependencyInjection;
+using NetInteractor.Core.WebAccessors;
 
 namespace NetInteractor.Core
 {
     public class InterationExecutor
     {
         private IServiceProvider serviceProvider;
+
+        private static IServiceProvider CreateDefaultServiceProvider()
+        {
+            var services = new ServiceCollection();
+            services.AddTransient<IWebAccessor, HttpWebAccessor>();
+            return services.BuildServiceProvider();;
+        }
+
+        public InterationExecutor()
+            : this(CreateDefaultServiceProvider())
+        {
+
+        }
 
         public InterationExecutor(IServiceProvider serviceProvider)
         {

@@ -15,12 +15,9 @@ namespace NetInteractor.Test
         [Fact]
         public async void TestShop()
         {
-            var services = new ServiceCollection();
-            services.AddTransient<IWebAccessor, HttpWebAccessor>();
-
             var config = ConfigFactory.DeserializeXml<InteractConfig>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Scripts", "Shop.config")));
 
-            var executor = new InterationExecutor(services.BuildServiceProvider());
+            var executor = new InterationExecutor();
 
             var inputs = new NameValueCollection();
             var result = await executor.ExecuteAsync(config, inputs);
