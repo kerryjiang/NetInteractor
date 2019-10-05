@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>0.3</Version>
+    <Version>0.4</Version>
     <Authors>Kerry Jiang</Authors>
     <Description>A web operation automation library in C# (.NET Core)</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
