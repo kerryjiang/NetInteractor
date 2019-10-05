@@ -14,3 +14,27 @@ Features:
 * Accept input parameters;
 * Extract parameters from the responses of middle steps (output parameters);
 * Basic work flow controlling (if);
+
+
+## The Automation Script
+
+![Shop](assets/config.png)
+
+
+## Execute the script
+```csharp
+var config = ConfigFactory.DeserializeXml<InteractConfig>("Scripts/Shop.config");
+
+var executor = new InterationExecutor();
+
+var inputs = new NameValueCollection();
+
+inputs["CreditCardNumber"] = "0123456789ABCD";
+inputs["CreditCardExpMonth"] = "04";
+inputs["CreditCardExpYear"] = "2021";
+// more input parameters
+// ...
+
+var result = await executor.ExecuteAsync(config, inputs);
+
+```
