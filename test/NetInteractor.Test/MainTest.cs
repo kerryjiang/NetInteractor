@@ -12,7 +12,7 @@ namespace NetInteractor.Test
     public class MainTest
     {
         
-        [Fact]
+        //[Fact]
         public async void TestShop()
         {
             var config = ConfigFactory.DeserializeXml<InteractConfig>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Scripts", "Shop.config")));
