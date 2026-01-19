@@ -7,6 +7,9 @@
     <PackageTags>Web, Automation, Html</PackageTags>
     <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl>
   </PropertyGroup>
+  <ItemGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <None Include="../../releaseNotes/v$(PackageVersion).md" Pack="true" PackagePath="/" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
