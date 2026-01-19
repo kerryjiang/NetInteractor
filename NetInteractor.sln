@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F5108642-5386-4F95-ACF8-8DA0AD621820}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetInteractor.Core", "src\NetInteractor.Core\NetInteractor.Core.csproj", "{75781078-1761-4EDD-A872-5F71D1FF9721}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetInteractor", "src\NetInteractor\NetInteractor.csproj", "{75781078-1761-4EDD-A872-5F71D1FF9721}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetInteractor.Test", "test\NetInteractor.Test\NetInteractor.Test.csproj", "{A9186BD7-EFFC-4B4D-B828-C4F4AA924C50}"
 EndProject
