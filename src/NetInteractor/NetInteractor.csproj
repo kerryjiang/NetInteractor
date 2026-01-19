@@ -8,8 +8,8 @@
     <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="$(MSExtensionsVersion)" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MSExtensionsVersion)" />
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 </Project>
