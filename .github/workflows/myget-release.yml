@@ -1,4 +1,4 @@
-name: myget
+name: myget-release
 
 on:
     push:
