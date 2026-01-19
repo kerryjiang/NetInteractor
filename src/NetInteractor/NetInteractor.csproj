@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
     <Authors>Kerry Jiang</Authors>
     <Description>A web operation automation library in C# (.NET Core)</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
