@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
     <Authors>Kerry Jiang</Authors>
     <Description>A web operation automation library in C# (.NET Core)</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -8,7 +8,7 @@
     <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="$(MSExtensionsVersion)" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(MSExtensionsVersion)" />
   </ItemGroup>

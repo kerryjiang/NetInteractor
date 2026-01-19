@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>    
-    <MSExtensionsVersion>6.0.0</MSExtensionsVersion>
+    <MSExtensionsVersion>9.0.0</MSExtensionsVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />

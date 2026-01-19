@@ -14,7 +14,7 @@
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/NetInteractor.Core/NetInteractor.Core.csproj" />
+    <ProjectReference Include="../../src/NetInteractor/NetInteractor.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Html\*.html" CopyToOutputDirectory="Always" />
