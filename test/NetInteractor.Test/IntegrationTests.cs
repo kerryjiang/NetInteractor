@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Reflection;
@@ -34,225 +35,250 @@ namespace NetInteractor.Test
         }
 
         /// <summary>
-        /// Loads and updates config with the actual server URL.
+        /// Creates web accessor instances for testing.
+        /// Returns different IWebAccessor implementations to test with.
         /// </summary>
-        private InteractConfig LoadConfigWithServerUrl(string configName)
+        public static IEnumerable<object[]> GetWebAccessors()
         {
-            var config = LoadConfig(configName);
-            var baseUrl = _factory.ServerUrl;
+            yield return new object[] { "HttpClient" };
             
-            // Update URLs in config to use the real server URL
-            if (!string.IsNullOrEmpty(baseUrl))
-            {
-                UpdateConfigUrls(config, baseUrl);
-            }
-            
-            return config;
+            // PuppeteerSharp tests require downloading Chromium browser on first run
+            // Uncomment the line below for local testing with PuppeteerSharp
+            // yield return new object[] { "PuppeteerSharp" };
         }
 
         /// <summary>
-        /// Updates all URLs in the config to use the provided base URL.
+        /// Creates the appropriate web accessor based on the type name.
         /// </summary>
-        private void UpdateConfigUrls(InteractConfig config, string baseUrl)
+        private IWebAccessor CreateWebAccessor(string accessorType)
         {
-            if (config.Targets == null) return;
-            
-            foreach (var target in config.Targets)
+            switch (accessorType)
             {
-                if (target.Actions == null) continue;
+                case "HttpClient":
+                    var client = _factory.CreateClient();
+                    return new HttpClientWebAccessor(client);
                 
-                foreach (var action in target.Actions)
+                case "PuppeteerSharp":
+                    // PuppeteerSharp uses a real browser and makes real HTTP requests
+                    // It can directly access the test server via its real HTTP URL
+                    return new PuppeteerSharpWebAccessor();
+                
+                default:
+                    throw new ArgumentException($"Unknown accessor type: {accessorType}");
+            }
+        }
+
+        /// <summary>
+        /// Creates input parameters with the BaseUrl for config file parameter substitution.
+        /// </summary>
+        private NameValueCollection CreateInputs(NameValueCollection additionalInputs = null)
+        {
+            var inputs = new NameValueCollection
+            {
+                ["BaseUrl"] = _factory.ServerUrl
+            };
+
+            if (additionalInputs != null)
+            {
+                foreach (string key in additionalInputs.Keys)
                 {
-                    // Check if this is a GetConfig with a URL
-                    if (action is GetConfig getConfig && !string.IsNullOrEmpty(getConfig.Url))
-                    {
-                        getConfig.Url = ReplaceLocalhost(getConfig.Url, baseUrl);
-                    }
-                    // Check if this is a PostConfig with an Action (URL)
-                    else if (action is PostConfig postConfig && !string.IsNullOrEmpty(postConfig.Action))
-                    {
-                        postConfig.Action = ReplaceLocalhost(postConfig.Action, baseUrl);
-                    }
+                    inputs[key] = additionalInputs[key];
                 }
             }
+
+            return inputs;
         }
 
-        /// <summary>
-        /// Replaces localhost URLs with the actual server base URL.
-        /// </summary>
-        private string ReplaceLocalhost(string url, string baseUrl)
-        {
-            if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(baseUrl))
-                return url;
-            
-            // Handle absolute localhost URLs like http://localhost/ or http://localhost/path
-            if (url.StartsWith("http://localhost/") || url == "http://localhost")
-            {
-                var path = url.Substring("http://localhost".Length);
-                return baseUrl.TrimEnd('/') + path;
-            }
-            
-            // Handle relative URLs
-            if (url.StartsWith("/"))
-            {
-                return baseUrl.TrimEnd('/') + url;
-            }
-            
-            return url;
-        }
-
-        [Fact]
-        public async Task TestGetRequest_ExtractTitle()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestGetRequest_ExtractTitle(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("GetRequest_ExtractTitle.config");
+            var config = LoadConfig("GetRequest_ExtractTitle.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExtractMultipleValues()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestGetRequest_ExtractMultipleValues(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("GetRequest_ExtractMultipleValues.config");
+            var config = LoadConfig("GetRequest_ExtractMultipleValues.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Contains("Value One", result.Outputs["values"]);
             Assert.Contains("Value Two", result.Outputs["values"]);
             Assert.Contains("Value Three", result.Outputs["values"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExtractAttribute()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestGetRequest_ExtractAttribute(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("GetRequest_ExtractAttribute.config");
+            var config = LoadConfig("GetRequest_ExtractAttribute.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("/images/test.png", result.Outputs["imageSrc"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExtractWithRegex()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestGetRequest_ExtractWithRegex(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("GetRequest_ExtractWithRegex.config");
+            var config = LoadConfig("GetRequest_ExtractWithRegex.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("98765", result.Outputs["orderId"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExpectedValueValidation_Success()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestGetRequest_ExpectedValueValidation_Success(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("GetRequest_ExpectedValueValidation_Success.config");
+            var config = LoadConfig("GetRequest_ExpectedValueValidation_Success.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExpectedValueValidation_Failure()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestGetRequest_ExpectedValueValidation_Failure(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("GetRequest_ExpectedValueValidation_Failure.config");
+            var config = LoadConfig("GetRequest_ExpectedValueValidation_Failure.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.False(result.Ok);
             Assert.Contains("Expected", result.Message);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestPostRequest_FormSubmission()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestPostRequest_FormSubmission(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("PostRequest_FormSubmission.config");
+            var config = LoadConfig("PostRequest_FormSubmission.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestPostRequest_FormSubmissionWithOutputExtraction()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestPostRequest_FormSubmissionWithOutputExtraction(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("PostRequest_FormSubmissionWithOutputExtraction.config");
+            var config = LoadConfig("PostRequest_FormSubmissionWithOutputExtraction.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Jane Smith", result.Outputs["customerName"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestLoginFlow_WithInputParameters()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestLoginFlow_WithInputParameters(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
+            var config = LoadConfig("LoginFlow_WithInputParameters.config");
 
-            // This test focuses on input parameter substitution
-            var config = LoadConfigWithServerUrl("LoginFlow_WithInputParameters.config");
-
-            var inputs = new NameValueCollection
+            var inputs = CreateInputs(new NameValueCollection
             {
                 ["BillingName"] = "Test User",
                 ["Email"] = "test@example.com"
-            };
+            });
 
             // Act
             var result = await executor.ExecuteAsync(config, inputs);
@@ -261,62 +287,44 @@ namespace NetInteractor.Test
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Test User", result.Outputs["customerName"]);
             Assert.Equal("test@example.com", result.Outputs["customerEmail"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestMultiStepWorkflow_ShoppingCart()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestMultiStepWorkflow_ShoppingCart(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-
-            // This test focuses on multi-step workflow - note that outputs from later steps
-            // may overwrite earlier outputs if they use the same context
-            var config = LoadConfigWithServerUrl("MultiStepWorkflow_ShoppingCart.config");
+            var config = LoadConfig("MultiStepWorkflow_ShoppingCart.config");
+            var inputs = CreateInputs();
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
-            // Check that cart outputs are available (final step outputs)
             Assert.Equal("$25.00", result.Outputs["cartTotal"]);
-            Assert.Equal("Medium", result.Outputs["itemSize"]); // Default cart item
+            Assert.Equal("Medium", result.Outputs["itemSize"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestCallTarget_ReusableWorkflow()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestCallTarget_ReusableWorkflow(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-
-            // This test focuses on the call target functionality
-            var config = LoadConfigWithServerUrl("CallTarget_ReusableWorkflow.config");
-
-            // Act
-            var result = await executor.ExecuteAsync(config);
-
-            // Assert
-            Assert.True(result.Ok, result.Message);
-            Assert.Equal("Data Extraction Test", result.Outputs["title"]);
-        }
-
-        [Fact]
-        public async Task TestConditionalExecution_IfStatement()
-        {
-            // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
-            var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("ConditionalExecution_IfStatement.config");
-
-            var inputs = new NameValueCollection
-            {
-                ["ShouldLogin"] = "false"
-            };
+            var config = LoadConfig("CallTarget_ReusableWorkflow.config");
+            var inputs = CreateInputs();
 
             // Act
             var result = await executor.ExecuteAsync(config, inputs);
@@ -324,61 +332,104 @@ namespace NetInteractor.Test
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Data Extraction Test", result.Outputs["title"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestExecuteSpecificTarget()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestConditionalExecution_IfStatement(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("ExecuteSpecificTarget.config");
+            var config = LoadConfig("ConditionalExecution_IfStatement.config");
+
+            var inputs = CreateInputs(new NameValueCollection
+            {
+                ["ShouldLogin"] = "false"
+            });
+
+            // Act
+            var result = await executor.ExecuteAsync(config, inputs);
+
+            // Assert
+            Assert.True(result.Ok, result.Message);
+            Assert.Equal("Data Extraction Test", result.Outputs["title"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
+        }
+
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestExecuteSpecificTarget(string accessorType)
+        {
+            // Arrange
+            var webAccessor = CreateWebAccessor(accessorType);
+            var executor = new InterationExecutor(webAccessor);
+            var config = LoadConfig("ExecuteSpecificTarget.config");
+            var inputs = CreateInputs();
 
             // Act - Execute specific target instead of default
-            var result = await executor.ExecuteAsync(config, null, "Products");
+            var result = await executor.ExecuteAsync(config, inputs, "Products");
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Test Product", result.Outputs["productName"]);
             Assert.Null(result.Outputs["title"]); // Should not have executed Main target
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestRedirect_301_FollowsRedirect()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestRedirect_301_FollowsRedirect(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            // Use TestHttpClientWebAccessor which manually handles redirects
-            // because HttpClient from TestServer doesn't support AllowAutoRedirect
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("RedirectTest.config");
+            var config = LoadConfig("RedirectTest.config");
+            var inputs = CreateInputs();
 
             // Act - Should follow 301 redirect from /redirect-test to /products
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Products", result.Outputs["title"]); // Should get products page after redirect
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestRedirect_AfterPost_FollowsRedirect()
+        [Theory]
+        [MemberData(nameof(GetWebAccessors))]
+        public async Task TestRedirect_AfterPost_FollowsRedirect(string accessorType)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
+            var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfigWithServerUrl("RedirectAfterPostTest.config");
+            var config = LoadConfig("RedirectAfterPostTest.config");
+            var inputs = CreateInputs();
 
             // Act - Should follow redirect after POST from /post-redirect-test to /post-redirect-result
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Post Redirect Success", result.Outputs["title"]);
             Assert.Equal("Redirect User", result.Outputs["customerName"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
     }
 }
