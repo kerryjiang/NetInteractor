@@ -17,25 +17,30 @@ namespace NetInteractor.Test
     /// </summary>
     public class WebAccessorTestData : IEnumerable<object[]>
     {
-        private readonly TestWebApplicationFactory _factory;
+        private readonly TestWebApplicationFactory _testServerFactory;
+        private readonly TestWebApplicationFactory _kestrelFactory;
 
         public WebAccessorTestData()
         {
-            _factory = new TestWebApplicationFactory();
+            // Create TestServer factory for HttpClient tests (in-memory, faster)
+            _testServerFactory = new TestWebApplicationFactory(ServerMode.TestServer);
+            
+            // Create Kestrel factory for PuppeteerSharp tests (real HTTP endpoint)
+            _kestrelFactory = new TestWebApplicationFactory(ServerMode.Kestrel);
         }
 
         public IEnumerator<object[]> GetEnumerator()
         {
-            // HttpClient accessor
-            var httpClient = _factory.CreateClient();
-            yield return new object[] { new HttpClientWebAccessor(httpClient), _factory.ServerUrl };
+            // HttpClient accessor with TestServer (in-memory)
+            var httpClient = _testServerFactory.CreateClient();
+            yield return new object[] { new HttpClientWebAccessor(httpClient), _testServerFactory.ServerUrl };
             
-            // PuppeteerSharp accessor - disabled by default in CI/CD
+            // PuppeteerSharp accessor with Kestrel (real HTTP) - disabled by default in CI/CD
             // Requires Chrome download which needs internet access not available in GitHub Actions
             // To enable locally: set environment variable ENABLE_PUPPETEER_TESTS=true
             if (Environment.GetEnvironmentVariable("ENABLE_PUPPETEER_TESTS") == "true")
             {
-                yield return new object[] { new PuppeteerSharpWebAccessor(), _factory.ServerUrl };
+                yield return new object[] { new PuppeteerSharpWebAccessor(), _kestrelFactory.ServerUrl };
             }
         }
 
