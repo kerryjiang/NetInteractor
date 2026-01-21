@@ -10,7 +10,7 @@ namespace NetInteractor
         public bool Ok { get; set; }
         public string Message { get; set; }
         public string Target { get; set; }
-        
+        public Exception Exception { get; set; }        
         public NameValueCollection Outputs { get; set; }
     }
 }

@@ -1,0 +1,158 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Reflection;
+
+namespace NetInteractor.Test.TestWebApp
+{
+    public class TestWebApplicationFactory : IDisposable
+    {
+        private readonly WebApplication _app;
+        private readonly TestServer _server;
+        private static readonly string PagesDirectory;
+
+        static TestWebApplicationFactory()
+        {
+            var assemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            PagesDirectory = Path.Combine(assemblyLocation!, "TestWebApp", "Pages");
+        }
+
+        private static string LoadPage(string pageName)
+        {
+            return File.ReadAllText(Path.Combine(PagesDirectory, pageName));
+        }
+
+        public TestWebApplicationFactory()
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
+            
+            // Add services
+            builder.Services.AddRouting();
+
+            _app = builder.Build();
+
+            // Home page
+            _app.MapGet("/", async context =>
+            {
+                await context.Response.WriteAsync(LoadPage("home.html"));
+            });
+
+            // Products page
+            _app.MapGet("/products", async context =>
+            {
+                await context.Response.WriteAsync(LoadPage("products.html"));
+            });
+
+            // Add to cart
+            _app.MapPost("/cart/add", async context =>
+            {
+                var form = await context.Request.ReadFormAsync();
+                var productId = form["productId"];
+                var size = form["size"];
+                var quantity = form["quantity"];
+
+                // Store in session/cookie simulation
+                context.Response.Cookies.Append("cart_item", $"{productId}:{size}:{quantity}");
+
+                context.Response.Redirect("/cart");
+            });
+
+            // Cart page (has dynamic content)
+            _app.MapGet("/cart", async context =>
+            {
+                var cartItem = context.Request.Cookies["cart_item"] ?? "1:Medium:1";
+                var parts = cartItem.Split(':');
+
+                var html = LoadPage("cart.html")
+                    .Replace("{item_size}", parts[1])
+                    .Replace("{item_quantity}", parts[2]);
+
+                await context.Response.WriteAsync(html);
+            });
+
+            // Checkout page
+            _app.MapGet("/checkout", async context =>
+            {
+                await context.Response.WriteAsync(LoadPage("checkout.html"));
+            });
+
+            // Submit checkout (has dynamic content)
+            _app.MapPost("/checkout/submit", async context =>
+            {
+                var form = await context.Request.ReadFormAsync();
+                var name = form["billing_name"];
+                var email = form["email"];
+
+                var html = LoadPage("order-confirmation.html")
+                    .Replace("{customer_name}", name!)
+                    .Replace("{customer_email}", email!);
+
+                await context.Response.WriteAsync(html);
+            });
+
+            // Login page
+            _app.MapGet("/login", async context =>
+            {
+                await context.Response.WriteAsync(LoadPage("login.html"));
+            });
+
+            // Login post
+            _app.MapPost("/login", async context =>
+            {
+                var form = await context.Request.ReadFormAsync();
+                var username = form["username"];
+                var password = form["password"];
+
+                if (username == "testuser" && password == "testpass")
+                {
+                    context.Response.Cookies.Append("auth", "authenticated");
+                    context.Response.Redirect("/dashboard");
+                }
+                else
+                {
+                    await context.Response.WriteAsync(LoadPage("login-failed.html"));
+                }
+            });
+
+            // Dashboard (protected)
+            _app.MapGet("/dashboard", async context =>
+            {
+                var auth = context.Request.Cookies["auth"];
+
+                if (auth != "authenticated")
+                {
+                    context.Response.Redirect("/login");
+                    return;
+                }
+
+                await context.Response.WriteAsync(LoadPage("dashboard.html"));
+            });
+
+            // Simple data extraction test page
+            _app.MapGet("/data", async context =>
+            {
+                await context.Response.WriteAsync(LoadPage("data.html"));
+            });
+
+            _app.Start();
+            _server = _app.GetTestServer();
+        }
+
+        public HttpClient CreateClient()
+        {
+            return _server.CreateClient();
+        }
+
+        public void Dispose()
+        {
+            _app?.DisposeAsync().AsTask().Wait();
+        }
+    }
+}

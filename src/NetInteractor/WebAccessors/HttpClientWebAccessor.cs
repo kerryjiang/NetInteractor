@@ -10,25 +10,23 @@ namespace NetInteractor.WebAccessors
 {
     public class HttpClientWebAccessor : IWebAccessor
     {
-        private readonly string _userAgent;
         private readonly HttpClient _httpClient;
-        private readonly HttpClientHandler _httpClientHandler;
 
-        public CookieContainer CookieContainer { get; set; }
+        public HttpClientWebAccessor(HttpClient httpClient)
+        {
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        }
 
         public HttpClientWebAccessor(string userAgent, CookieContainer cookieContainer)
         {
-            _userAgent = userAgent;
-            CookieContainer = cookieContainer;
-
-            _httpClientHandler = new HttpClientHandler
+            var httpClientHandler = new HttpClientHandler
             {
-                CookieContainer = CookieContainer,
+                CookieContainer = cookieContainer,
                 UseCookies = true
             };
 
-            _httpClient = new HttpClient(_httpClientHandler);
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_userAgent);
+            _httpClient = new HttpClient(httpClientHandler);
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
         }
 
         public HttpClientWebAccessor()

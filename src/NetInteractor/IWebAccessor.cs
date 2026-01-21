@@ -10,7 +10,5 @@ namespace NetInteractor
         Task<ResponseInfo> GetAsync(string url);
 
         Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues);
-    
-        CookieContainer CookieContainer { get; set; }
     }
 }

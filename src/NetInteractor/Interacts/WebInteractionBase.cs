@@ -90,13 +90,18 @@ namespace NetInteractor.Interacts
                     return new InteractionResult
                     {
                         Ok = false,
-                        Message = ((HttpStatusCode)response.StatusCode).ToString()
+                        Message = $"The response HTTP status code is {response.StatusCode}, which is not expected."
                     };
                 }
             }
             catch (Exception e)
             {
-                return new InteractionResult { Ok = false, Message = e.Message };
+                return new InteractionResult
+                    {
+                        Ok = false,
+                        Message = e.Message,
+                        Exception = e
+                    };
             }
 
             var pageInfo = new PageInfo(response.Url, response.Html);
@@ -126,6 +131,9 @@ namespace NetInteractor.Interacts
         private NameValueCollection GetOutputValues(PageInfo page)
         {
             var values = new NameValueCollection();
+
+            values.Add(nameof(page.Url), page.Url);
+            values.Add(nameof(page.Html), page.Html);
 
             foreach (var regex in regexes)
             {

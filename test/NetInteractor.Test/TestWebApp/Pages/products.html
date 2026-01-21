@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Products</title></head>
+<body>
+    <h1>Products</h1>
+    <div class='product' id='product-1'>
+        <span class='product-name'>Test Product</span>
+        <span class='price'>$25.00</span>
+        <form id='add-to-cart-form' action='/cart/add' method='post'>
+            <input type='hidden' name='productId' value='1' />
+            <select name='size'>
+                <option value='Small'>Small</option>
+                <option value='Medium'>Medium</option>
+                <option value='Large'>Large</option>
+            </select>
+            <input type='number' name='quantity' value='1' />
+            <button type='submit'>Add to Cart</button>
+        </form>
+    </div>
+</body>
+</html>
