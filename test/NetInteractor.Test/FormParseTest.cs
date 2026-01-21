@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using Xunit;
-using NetInteractor.Core;
+using NetInteractor;
 
 namespace NetInteractor.Test
 {

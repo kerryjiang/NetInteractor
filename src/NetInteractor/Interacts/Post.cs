@@ -2,10 +2,10 @@ using System;
 using System.Linq;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
-using NetInteractor.Core;
-using NetInteractor.Core.Config;
+using NetInteractor;
+using NetInteractor.Config;
 
-namespace NetInteractor.Core.Interacts
+namespace NetInteractor.Interacts
 {
     public class Post : WebInteractionBase<PostConfig>
     {

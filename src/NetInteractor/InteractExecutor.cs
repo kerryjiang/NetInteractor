@@ -2,11 +2,11 @@ using System;
 using System.Linq;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
-using NetInteractor.Core.Config;
+using NetInteractor.Config;
 using Microsoft.Extensions.DependencyInjection;
-using NetInteractor.Core.WebAccessors;
+using NetInteractor.WebAccessors;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public class InterationExecutor
     {

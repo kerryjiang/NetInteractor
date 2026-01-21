@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using HtmlAgilityPack;
 using System.Net;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public class ResponseInfo
     {

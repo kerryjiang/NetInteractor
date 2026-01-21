@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using Xunit;
-using NetInteractor.Core;
-using NetInteractor.Core.Config;
+using NetInteractor;
+using NetInteractor.Config;
 
 namespace NetInteractor.Test
 {

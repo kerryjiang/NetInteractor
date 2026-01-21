@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 
-namespace NetInteractor.Core.Config
+namespace NetInteractor.Config
 {
     public class TargetConfig : IUnknownElementHandler
     {

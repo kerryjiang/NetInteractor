@@ -79,9 +79,9 @@ Create a configuration file (e.g., `Shop.config`) that defines your web interact
 ### 2. Execute the Script
 
 ```csharp
-using NetInteractor.Core;
-using NetInteractor.Core.Config;
-using NetInteractor.Core.WebAccessors;
+using NetInteractor;
+using NetInteractor.Config;
+using NetInteractor.WebAccessors;
 using System.Collections.Specialized;
 
 // Load the configuration

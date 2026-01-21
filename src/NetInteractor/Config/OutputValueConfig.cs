@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace NetInteractor.Core.Config
+namespace NetInteractor.Config
 {
     public class OutputValueConfig
     {

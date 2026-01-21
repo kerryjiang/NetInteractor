@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
-using NetInteractor.Core.Config;
+using NetInteractor.Config;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public abstract class InteractionBase<TConfig> : IInteractAction
         where TConfig : class

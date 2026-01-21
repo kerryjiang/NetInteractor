@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text;
 
-namespace NetInteractor.Core.WebAccessors
+namespace NetInteractor.WebAccessors
 {
     public class HttpClientWebAccessor : IWebAccessor
     {

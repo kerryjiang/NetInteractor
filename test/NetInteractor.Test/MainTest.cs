@@ -2,9 +2,9 @@ using System;
 using System.Collections.Specialized;
 using System.IO;
 using Microsoft.Extensions.DependencyInjection;
-using NetInteractor.Core;
-using NetInteractor.Core.Config;
-using NetInteractor.Core.WebAccessors;
+using NetInteractor;
+using NetInteractor.Config;
+using NetInteractor.WebAccessors;
 using Xunit;
 
 namespace NetInteractor.Test

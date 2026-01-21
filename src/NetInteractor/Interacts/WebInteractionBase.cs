@@ -4,11 +4,11 @@ using System.Collections.Specialized;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Linq;
-using NetInteractor.Core.Config;
+using NetInteractor.Config;
 using HtmlAgilityPack;
 using System.Net;
 
-namespace NetInteractor.Core.Interacts
+namespace NetInteractor.Interacts
 {
     public abstract class WebInteractionBase<TConfig> : InteractionBase<TConfig>
         where TConfig : InteractActionConfig

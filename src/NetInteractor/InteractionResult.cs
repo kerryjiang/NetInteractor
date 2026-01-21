@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public class InteractionResult
     {

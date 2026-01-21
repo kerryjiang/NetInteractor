@@ -2,7 +2,7 @@ using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public class InterationContext
     {

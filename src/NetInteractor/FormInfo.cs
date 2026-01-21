@@ -4,9 +4,9 @@ using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
-using NetInteractor.Core.Config;
+using NetInteractor.Config;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public class FormInfo
     {

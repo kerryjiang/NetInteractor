@@ -4,7 +4,7 @@ using System.Collections.Specialized;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
 
-namespace NetInteractor.Core
+namespace NetInteractor
 {
     public class PageInfo
     {

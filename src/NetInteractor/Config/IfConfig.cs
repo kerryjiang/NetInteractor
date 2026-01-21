@@ -3,9 +3,9 @@ using System.Collections.Specialized;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
-using NetInteractor.Core.Interacts;
+using NetInteractor.Interacts;
 
-namespace NetInteractor.Core.Config
+namespace NetInteractor.Config
 {
     [Serializable]
     [XmlRoot("if")]
