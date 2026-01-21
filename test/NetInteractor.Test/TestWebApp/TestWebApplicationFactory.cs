@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -15,8 +15,9 @@ namespace NetInteractor.Test.TestWebApp
     public class TestWebApplicationFactory : IDisposable
     {
         private readonly WebApplication _app;
-        private readonly TestServer _server;
+        private readonly HttpClient _httpClient;
         private static readonly string PagesDirectory;
+        private readonly string _serverUrl;
 
         static TestWebApplicationFactory()
         {
@@ -32,7 +33,14 @@ namespace NetInteractor.Test.TestWebApp
         public TestWebApplicationFactory()
         {
             var builder = WebApplication.CreateBuilder();
-            builder.WebHost.UseTestServer();
+            
+            // Configure to use Kestrel for real HTTP
+            builder.WebHost.UseKestrel(options =>
+            {
+                // Use a dynamic port for Kestrel to avoid conflicts
+                // Listen on IPv4 loopback with dynamic port
+                options.Listen(System.Net.IPAddress.Loopback, 0);
+            });
             
             // Add services
             builder.Services.AddRouting();
@@ -174,16 +182,35 @@ namespace NetInteractor.Test.TestWebApp
             });
 
             _app.Start();
-            _server = _app.GetTestServer();
+            
+            // Get the actual URL assigned by Kestrel
+            var addresses = _app.Urls;
+            if (addresses.Count > 0)
+            {
+                _serverUrl = addresses.First();
+            }
+            else
+            {
+                _serverUrl = "http://localhost:5000"; // Fallback
+            }
+            
+            // Create an HttpClient without BaseAddress so it works with absolute URLs
+            _httpClient = new HttpClient();
         }
 
         public HttpClient CreateClient()
         {
-            return _server.CreateClient();
+            return _httpClient;
         }
+
+        /// <summary>
+        /// Gets the base URL of the real HTTP server for use with PuppeteerSharp or other real HTTP clients.
+        /// </summary>
+        public string ServerUrl => _serverUrl;
 
         public void Dispose()
         {
+            _httpClient?.Dispose();
             _app?.DisposeAsync().AsTask().Wait();
         }
     }

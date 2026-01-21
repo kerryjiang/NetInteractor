@@ -47,12 +47,11 @@ namespace NetInteractor.Test
         /// </summary>
         public static IEnumerable<object[]> GetWebAccessors()
         {
-            yield return new object[] { "HttpClient", null }; // Will be created in test with factory client
+            yield return new object[] { "HttpClient" };
             
-            // Note: PuppeteerSharp tests are skipped in CI/automated environments
-            // because they require downloading Chromium browser on first run
+            // PuppeteerSharp tests require downloading Chromium browser on first run
             // Uncomment the line below for local testing with PuppeteerSharp
-            // yield return new object[] { "PuppeteerSharp", null };
+            // yield return new object[] { "PuppeteerSharp" };
         }
 
         /// <summary>
@@ -67,24 +66,100 @@ namespace NetInteractor.Test
                     return new HttpClientWebAccessor(client);
                 
                 case "PuppeteerSharp":
-                    // For PuppeteerSharp, we need to configure it to work with the test server
-                    // Since TestServer only provides HttpClient access, we'll need a different approach
-                    // For now, skip PuppeteerSharp in parameterized tests
-                    throw new NotSupportedException("PuppeteerSharp requires a real HTTP endpoint");
+                    // PuppeteerSharp uses a real browser and makes real HTTP requests
+                    // It can directly access the test server via its real HTTP URL
+                    return new PuppeteerSharpWebAccessor();
                 
                 default:
                     throw new ArgumentException($"Unknown accessor type: {accessorType}");
             }
         }
 
+        /// <summary>
+        /// Gets the base URL to use in config files based on the accessor type.
+        /// Both HttpClient and PuppeteerSharp now use the real HTTP server.
+        /// </summary>
+        private string GetBaseUrl(string accessorType)
+        {
+            return _factory.ServerUrl;
+        }
+
+        /// <summary>
+        /// Loads and updates config with the appropriate base URL for the accessor type.
+        /// </summary>
+        private InteractConfig LoadConfigForAccessor(string configName, string accessorType)
+        {
+            var config = LoadConfig(configName);
+            var baseUrl = GetBaseUrl(accessorType);
+            
+            // Update URLs in config to use the real server URL
+            if (!string.IsNullOrEmpty(baseUrl))
+            {
+                UpdateConfigUrls(config, baseUrl);
+            }
+            
+            return config;
+        }
+
+        /// <summary>
+        /// Updates all URLs in the config to use the provided base URL.
+        /// </summary>
+        private void UpdateConfigUrls(InteractConfig config, string baseUrl)
+        {
+            if (config.Targets == null) return;
+            
+            foreach (var target in config.Targets)
+            {
+                if (target.Actions == null) continue;
+                
+                foreach (var action in target.Actions)
+                {
+                    // Check if this is a GetConfig with a URL
+                    if (action is GetConfig getConfig && !string.IsNullOrEmpty(getConfig.Url))
+                    {
+                        getConfig.Url = ReplaceLocalhost(getConfig.Url, baseUrl);
+                    }
+                    // Check if this is a PostConfig with an Action (URL)
+                    else if (action is PostConfig postConfig && !string.IsNullOrEmpty(postConfig.Action))
+                    {
+                        postConfig.Action = ReplaceLocalhost(postConfig.Action, baseUrl);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Replaces localhost URLs with the actual server base URL.
+        /// </summary>
+        private string ReplaceLocalhost(string url, string baseUrl)
+        {
+            if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(baseUrl))
+                return url;
+            
+            // Handle absolute localhost URLs like http://localhost/ or http://localhost/path
+            if (url.StartsWith("http://localhost/") || url == "http://localhost")
+            {
+                var path = url.Substring("http://localhost".Length);
+                return baseUrl.TrimEnd('/') + path;
+            }
+            
+            // Handle relative URLs
+            if (url.StartsWith("/"))
+            {
+                return baseUrl.TrimEnd('/') + url;
+            }
+            
+            return url;
+        }
+
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestGetRequest_ExtractTitle(string accessorType, object _)
+        public async Task TestGetRequest_ExtractTitle(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractTitle.config");
+            var config = LoadConfigForAccessor("GetRequest_ExtractTitle.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -100,12 +175,12 @@ namespace NetInteractor.Test
 
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestGetRequest_ExtractMultipleValues(string accessorType, object _)
+        public async Task TestGetRequest_ExtractMultipleValues(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractMultipleValues.config");
+            var config = LoadConfigForAccessor("GetRequest_ExtractMultipleValues.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -123,12 +198,12 @@ namespace NetInteractor.Test
 
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestGetRequest_ExtractAttribute(string accessorType, object _)
+        public async Task TestGetRequest_ExtractAttribute(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractAttribute.config");
+            var config = LoadConfigForAccessor("GetRequest_ExtractAttribute.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -144,12 +219,12 @@ namespace NetInteractor.Test
 
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestGetRequest_ExtractWithRegex(string accessorType, object _)
+        public async Task TestGetRequest_ExtractWithRegex(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractWithRegex.config");
+            var config = LoadConfigForAccessor("GetRequest_ExtractWithRegex.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -165,12 +240,12 @@ namespace NetInteractor.Test
 
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestPostRequest_FormSubmission(string accessorType, object _)
+        public async Task TestPostRequest_FormSubmission(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("PostRequest_FormSubmission.config");
+            var config = LoadConfigForAccessor("PostRequest_FormSubmission.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -185,12 +260,12 @@ namespace NetInteractor.Test
 
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestPostRequest_FormSubmissionWithOutputExtraction(string accessorType, object _)
+        public async Task TestPostRequest_FormSubmissionWithOutputExtraction(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("PostRequest_FormSubmissionWithOutputExtraction.config");
+            var config = LoadConfigForAccessor("PostRequest_FormSubmissionWithOutputExtraction.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -206,12 +281,12 @@ namespace NetInteractor.Test
 
         [Theory]
         [MemberData(nameof(GetWebAccessors))]
-        public async Task TestMultiStepWorkflow_ShoppingCart(string accessorType, object _)
+        public async Task TestMultiStepWorkflow_ShoppingCart(string accessorType)
         {
             // Arrange
             var webAccessor = CreateWebAccessor(accessorType);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("MultiStepWorkflow_ShoppingCart.config");
+            var config = LoadConfigForAccessor("MultiStepWorkflow_ShoppingCart.config", accessorType);
 
             // Act
             var result = await executor.ExecuteAsync(config);

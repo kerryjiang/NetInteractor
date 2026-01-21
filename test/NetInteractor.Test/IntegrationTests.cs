@@ -33,6 +33,74 @@ namespace NetInteractor.Test
             _factory = factory;
         }
 
+        /// <summary>
+        /// Loads and updates config with the actual server URL.
+        /// </summary>
+        private InteractConfig LoadConfigWithServerUrl(string configName)
+        {
+            var config = LoadConfig(configName);
+            var baseUrl = _factory.ServerUrl;
+            
+            // Update URLs in config to use the real server URL
+            if (!string.IsNullOrEmpty(baseUrl))
+            {
+                UpdateConfigUrls(config, baseUrl);
+            }
+            
+            return config;
+        }
+
+        /// <summary>
+        /// Updates all URLs in the config to use the provided base URL.
+        /// </summary>
+        private void UpdateConfigUrls(InteractConfig config, string baseUrl)
+        {
+            if (config.Targets == null) return;
+            
+            foreach (var target in config.Targets)
+            {
+                if (target.Actions == null) continue;
+                
+                foreach (var action in target.Actions)
+                {
+                    // Check if this is a GetConfig with a URL
+                    if (action is GetConfig getConfig && !string.IsNullOrEmpty(getConfig.Url))
+                    {
+                        getConfig.Url = ReplaceLocalhost(getConfig.Url, baseUrl);
+                    }
+                    // Check if this is a PostConfig with an Action (URL)
+                    else if (action is PostConfig postConfig && !string.IsNullOrEmpty(postConfig.Action))
+                    {
+                        postConfig.Action = ReplaceLocalhost(postConfig.Action, baseUrl);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Replaces localhost URLs with the actual server base URL.
+        /// </summary>
+        private string ReplaceLocalhost(string url, string baseUrl)
+        {
+            if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(baseUrl))
+                return url;
+            
+            // Handle absolute localhost URLs like http://localhost/ or http://localhost/path
+            if (url.StartsWith("http://localhost/") || url == "http://localhost")
+            {
+                var path = url.Substring("http://localhost".Length);
+                return baseUrl.TrimEnd('/') + path;
+            }
+            
+            // Handle relative URLs
+            if (url.StartsWith("/"))
+            {
+                return baseUrl.TrimEnd('/') + url;
+            }
+            
+            return url;
+        }
+
         [Fact]
         public async Task TestGetRequest_ExtractTitle()
         {
@@ -40,7 +108,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractTitle.config");
+            var config = LoadConfigWithServerUrl("GetRequest_ExtractTitle.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -57,7 +125,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractMultipleValues.config");
+            var config = LoadConfigWithServerUrl("GetRequest_ExtractMultipleValues.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -76,7 +144,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractAttribute.config");
+            var config = LoadConfigWithServerUrl("GetRequest_ExtractAttribute.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -93,7 +161,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExtractWithRegex.config");
+            var config = LoadConfigWithServerUrl("GetRequest_ExtractWithRegex.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -110,7 +178,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExpectedValueValidation_Success.config");
+            var config = LoadConfigWithServerUrl("GetRequest_ExpectedValueValidation_Success.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -126,7 +194,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("GetRequest_ExpectedValueValidation_Failure.config");
+            var config = LoadConfigWithServerUrl("GetRequest_ExpectedValueValidation_Failure.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -143,7 +211,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("PostRequest_FormSubmission.config");
+            var config = LoadConfigWithServerUrl("PostRequest_FormSubmission.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -159,7 +227,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("PostRequest_FormSubmissionWithOutputExtraction.config");
+            var config = LoadConfigWithServerUrl("PostRequest_FormSubmissionWithOutputExtraction.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -178,7 +246,7 @@ namespace NetInteractor.Test
             var executor = new InterationExecutor(webAccessor);
 
             // This test focuses on input parameter substitution
-            var config = LoadConfig("LoginFlow_WithInputParameters.config");
+            var config = LoadConfigWithServerUrl("LoginFlow_WithInputParameters.config");
 
             var inputs = new NameValueCollection
             {
@@ -205,7 +273,7 @@ namespace NetInteractor.Test
 
             // This test focuses on multi-step workflow - note that outputs from later steps
             // may overwrite earlier outputs if they use the same context
-            var config = LoadConfig("MultiStepWorkflow_ShoppingCart.config");
+            var config = LoadConfigWithServerUrl("MultiStepWorkflow_ShoppingCart.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -226,7 +294,7 @@ namespace NetInteractor.Test
             var executor = new InterationExecutor(webAccessor);
 
             // This test focuses on the call target functionality
-            var config = LoadConfig("CallTarget_ReusableWorkflow.config");
+            var config = LoadConfigWithServerUrl("CallTarget_ReusableWorkflow.config");
 
             // Act
             var result = await executor.ExecuteAsync(config);
@@ -243,7 +311,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("ConditionalExecution_IfStatement.config");
+            var config = LoadConfigWithServerUrl("ConditionalExecution_IfStatement.config");
 
             var inputs = new NameValueCollection
             {
@@ -265,7 +333,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("ExecuteSpecificTarget.config");
+            var config = LoadConfigWithServerUrl("ExecuteSpecificTarget.config");
 
             // Act - Execute specific target instead of default
             var result = await executor.ExecuteAsync(config, null, "Products");
@@ -285,7 +353,7 @@ namespace NetInteractor.Test
             // because HttpClient from TestServer doesn't support AllowAutoRedirect
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("RedirectTest.config");
+            var config = LoadConfigWithServerUrl("RedirectTest.config");
 
             // Act - Should follow 301 redirect from /redirect-test to /products
             var result = await executor.ExecuteAsync(config);
@@ -302,7 +370,7 @@ namespace NetInteractor.Test
             var client = _factory.CreateClient();
             var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-            var config = LoadConfig("RedirectAfterPostTest.config");
+            var config = LoadConfigWithServerUrl("RedirectAfterPostTest.config");
 
             // Act - Should follow redirect after POST from /post-redirect-test to /post-redirect-result
             var result = await executor.ExecuteAsync(config);
