@@ -161,18 +161,7 @@ namespace NetInteractor.Test.TestWebApp
             // Form page for POST redirect test
             _app.MapGet("/post-redirect-test-form", async context =>
             {
-                await context.Response.WriteAsync(@"
-<!DOCTYPE html>
-<html>
-<head><title>Post Redirect Form</title></head>
-<body>
-    <h1>Post Redirect Form</h1>
-    <form id='redirect-form' action='/post-redirect-test' method='post'>
-        <input type='text' name='billing_name' placeholder='Name' />
-        <button type='submit'>Submit</button>
-    </form>
-</body>
-</html>");
+                await context.Response.WriteAsync(LoadPage("post-redirect-form.html"));
             });
 
             // Result page after POST redirect
@@ -180,15 +169,8 @@ namespace NetInteractor.Test.TestWebApp
             {
                 var name = context.Request.Query["name"].ToString();
                 if (string.IsNullOrEmpty(name)) name = "Unknown";
-                await context.Response.WriteAsync($@"
-<!DOCTYPE html>
-<html>
-<head><title>Post Redirect Result</title></head>
-<body>
-    <h1>Post Redirect Success</h1>
-    <span class='customer-name'>{name}</span>
-</body>
-</html>");
+                var html = LoadPage("post-redirect-result.html").Replace("{{name}}", name);
+                await context.Response.WriteAsync(html);
             });
 
             _app.Start();
