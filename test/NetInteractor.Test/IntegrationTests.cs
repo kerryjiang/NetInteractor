@@ -275,5 +275,42 @@ namespace NetInteractor.Test
             Assert.Equal("Test Product", result.Outputs["productName"]);
             Assert.Null(result.Outputs["title"]); // Should not have executed Main target
         }
+
+        [Fact]
+        public async Task TestRedirect_301_FollowsRedirect()
+        {
+            // Arrange
+            var client = _factory.CreateClient();
+            // Use TestHttpClientWebAccessor which manually handles redirects
+            // because HttpClient from TestServer doesn't support AllowAutoRedirect
+            var webAccessor = new HttpClientWebAccessor(client);
+            var executor = new InterationExecutor(webAccessor);
+            var config = LoadConfig("RedirectTest.config");
+
+            // Act - Should follow 301 redirect from /redirect-test to /products
+            var result = await executor.ExecuteAsync(config);
+
+            // Assert
+            Assert.True(result.Ok, result.Message);
+            Assert.Equal("Products", result.Outputs["title"]); // Should get products page after redirect
+        }
+
+        [Fact]
+        public async Task TestRedirect_AfterPost_FollowsRedirect()
+        {
+            // Arrange
+            var client = _factory.CreateClient();
+            var webAccessor = new HttpClientWebAccessor(client);
+            var executor = new InterationExecutor(webAccessor);
+            var config = LoadConfig("RedirectAfterPostTest.config");
+
+            // Act - Should follow redirect after POST from /post-redirect-test to /post-redirect-result
+            var result = await executor.ExecuteAsync(config);
+
+            // Assert
+            Assert.True(result.Ok, result.Message);
+            Assert.Equal("Post Redirect Success", result.Outputs["title"]);
+            Assert.Equal("Redirect User", result.Outputs["customerName"]);
+        }
     }
 }

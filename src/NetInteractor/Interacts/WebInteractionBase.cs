@@ -77,20 +77,60 @@ namespace NetInteractor.Interacts
 
         protected abstract Task<ResponseInfo> MakeRequest(InterationContext context);
 
+        private Task<ResponseInfo> MakeRedirectRequest(InterationContext context, string redirectUrl)
+        {
+            var webAccessor = context.WebAccessor;
+            return webAccessor.GetAsync(redirectUrl);
+        }
+
+        private async Task<ResponseInfo> MakeRequestInternal(InterationContext context, string redirectUrl = null)
+        {
+            var response = string.IsNullOrEmpty(redirectUrl)
+                ? await MakeRequest(context)
+                : await MakeRedirectRequest(context, redirectUrl);
+
+            if (response.StatusCode >= 301 && response.StatusCode <= 308)
+            {
+                if (context.RedirectCount >= 10)
+                {
+                    response.StatusCode = -1;
+                    response.StatusDescription = $"The maximum number of redirects ({context.RedirectCount}) has been reached.";
+                    return response;
+                }
+
+                if (response.Headers.Location == null)
+                {
+                    response.StatusCode = -1;
+                    response.StatusDescription = "The response is a redirect, but no Location header is found.";
+                    return response;
+                }
+
+                redirectUrl = response.Headers.Location.ToString();
+                context.RedirectCount++;
+
+                return await MakeRequestInternal(context, redirectUrl);
+            }
+
+            return response;
+        }
+
         public override async Task<InteractionResult> ExecuteAsync(InterationContext context)
         {
             var response = default(ResponseInfo);
 
             try
             {
-                response = await MakeRequest(context);
+                context.RedirectCount = 0;
+                response = await MakeRequestInternal(context);
 
                 if (!expectedHttpStatusCodes.Contains(response.StatusCode))
                 {
                     return new InteractionResult
                     {
                         Ok = false,
-                        Message = $"The response HTTP status code is {response.StatusCode}, which is not expected."
+                        Message = response.StatusCode == -1
+                            ? response.StatusDescription
+                            : $"The response HTTP status code is {response.StatusCode}, which is not expected."
                     };
                 }
             }

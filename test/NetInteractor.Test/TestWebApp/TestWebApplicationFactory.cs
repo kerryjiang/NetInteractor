@@ -8,6 +8,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace NetInteractor.Test.TestWebApp
 {
@@ -139,6 +140,55 @@ namespace NetInteractor.Test.TestWebApp
             _app.MapGet("/data", async context =>
             {
                 await context.Response.WriteAsync(LoadPage("data.html"));
+            });
+
+            // 301 Redirect test endpoint
+            _app.MapGet("/redirect-test", context =>
+            {
+                context.Response.Redirect("/products", permanent: true);
+                return Task.CompletedTask;
+            });
+
+            // POST redirect test endpoint - redirects to order confirmation after POST
+            _app.MapPost("/post-redirect-test", async context =>
+            {
+                var form = await context.Request.ReadFormAsync();
+                // Pass data via query string in redirect URL
+                var name = Uri.EscapeDataString(form["billing_name"].ToString());
+                context.Response.Redirect($"/post-redirect-result?name={name}");
+            });
+
+            // Form page for POST redirect test
+            _app.MapGet("/post-redirect-test-form", async context =>
+            {
+                await context.Response.WriteAsync(@"
+<!DOCTYPE html>
+<html>
+<head><title>Post Redirect Form</title></head>
+<body>
+    <h1>Post Redirect Form</h1>
+    <form id='redirect-form' action='/post-redirect-test' method='post'>
+        <input type='text' name='billing_name' placeholder='Name' />
+        <button type='submit'>Submit</button>
+    </form>
+</body>
+</html>");
+            });
+
+            // Result page after POST redirect
+            _app.MapGet("/post-redirect-result", async context =>
+            {
+                var name = context.Request.Query["name"].ToString();
+                if (string.IsNullOrEmpty(name)) name = "Unknown";
+                await context.Response.WriteAsync($@"
+<!DOCTYPE html>
+<html>
+<head><title>Post Redirect Result</title></head>
+<body>
+    <h1>Post Redirect Success</h1>
+    <span class='customer-name'>{name}</span>
+</body>
+</html>");
             });
 
             _app.Start();

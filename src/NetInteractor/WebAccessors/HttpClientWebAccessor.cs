@@ -22,7 +22,8 @@ namespace NetInteractor.WebAccessors
             var httpClientHandler = new HttpClientHandler
             {
                 CookieContainer = cookieContainer,
-                UseCookies = true
+                UseCookies = true,
+                AllowAutoRedirect = true
             };
 
             _httpClient = new HttpClient(httpClientHandler);
@@ -34,7 +35,7 @@ namespace NetInteractor.WebAccessors
         {
         }
 
-        public async Task<ResponseInfo> GetAsync(string url)
+        public virtual async Task<ResponseInfo> GetAsync(string url)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
 
@@ -43,7 +44,7 @@ namespace NetInteractor.WebAccessors
             return await GetResultFromResponse(response);
         }
 
-        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues)
+        public virtual async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
@@ -65,7 +66,8 @@ namespace NetInteractor.WebAccessors
             {
                 StatusCode = (int)response.StatusCode,
                 Html = html,
-                Url = response.RequestMessage?.RequestUri?.ToString()
+                Url = response.RequestMessage?.RequestUri?.ToString(),
+                Headers = response.Headers
             };
         }
     }

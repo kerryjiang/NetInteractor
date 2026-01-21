@@ -13,5 +13,7 @@ namespace NetInteractor
         public NameValueCollection Inputs { get; set; }
 
         public NameValueCollection Outputs { get; set; }
+
+        internal int RedirectCount { get; set; }
     }
 }
