@@ -28,14 +28,14 @@ namespace NetInteractor.Test
         {
             // HttpClient accessor
             var httpClient = _factory.CreateClient();
-            yield return new object[] { new HttpClientWebAccessor(httpClient), _factory.ServerUrl, "HttpClient" };
+            yield return new object[] { new HttpClientWebAccessor(httpClient), _factory.ServerUrl };
             
             // PuppeteerSharp accessor - disabled by default in CI/CD
             // Requires Chrome download which needs internet access not available in GitHub Actions
             // To enable locally: set environment variable ENABLE_PUPPETEER_TESTS=true
             if (Environment.GetEnvironmentVariable("ENABLE_PUPPETEER_TESTS") == "true")
             {
-                yield return new object[] { new PuppeteerSharpWebAccessor(), _factory.ServerUrl, "PuppeteerSharp" };
+                yield return new object[] { new PuppeteerSharpWebAccessor(), _factory.ServerUrl };
             }
         }
 
@@ -61,7 +61,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestGetRequest_ExtractTitle(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestGetRequest_ExtractTitle(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -82,7 +82,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestGetRequest_ExtractMultipleValues(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestGetRequest_ExtractMultipleValues(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -105,7 +105,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestGetRequest_ExtractAttribute(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestGetRequest_ExtractAttribute(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -126,7 +126,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestGetRequest_ExtractWithRegex(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestGetRequest_ExtractWithRegex(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -147,7 +147,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestGetRequest_ExpectedValueValidation_Success(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestGetRequest_ExpectedValueValidation_Success(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -167,7 +167,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestGetRequest_ExpectedValueValidation_Failure(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestGetRequest_ExpectedValueValidation_Failure(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -188,7 +188,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestPostRequest_FormSubmission(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestPostRequest_FormSubmission(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -208,7 +208,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestPostRequest_FormSubmissionWithOutputExtraction(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestPostRequest_FormSubmissionWithOutputExtraction(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -229,7 +229,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestLoginFlow_WithInputParameters(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestLoginFlow_WithInputParameters(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -257,7 +257,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestMultiStepWorkflow_ShoppingCart(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestMultiStepWorkflow_ShoppingCart(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -279,7 +279,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestCallTarget_ReusableWorkflow(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestCallTarget_ReusableWorkflow(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -300,7 +300,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestConditionalExecution_IfStatement(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestConditionalExecution_IfStatement(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -326,7 +326,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestExecuteSpecificTarget(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestExecuteSpecificTarget(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -348,7 +348,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestRedirect_301_FollowsRedirect(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestRedirect_301_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
@@ -369,7 +369,7 @@ namespace NetInteractor.Test
 
         [Theory]
         [ClassData(typeof(WebAccessorTestData))]
-        public async Task TestRedirect_AfterPost_FollowsRedirect(IWebAccessor webAccessor, string baseUrl, string accessorName)
+        public async Task TestRedirect_AfterPost_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
             var executor = new InterationExecutor(webAccessor);
