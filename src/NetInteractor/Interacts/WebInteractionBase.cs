@@ -106,10 +106,14 @@ namespace NetInteractor.Core.Interacts
 
             if (!ValidateOutput(context.Outputs, out string message))
             {
+                // Add this for debug purpose
+                context.Outputs.Add(nameof(pageInfo.Html), pageInfo.Html);
+
                 return new InteractionResult
                 {
                     Ok = false,
-                    Message = message
+                    Message = message,
+                    Outputs = context.Outputs
                 };
             }
 
@@ -193,6 +197,9 @@ namespace NetInteractor.Core.Interacts
 
         private string GetXpathNodeValue(HtmlNode node, XpathInfo xpathValue)
         {
+            if (node == null)
+                return string.Empty;
+
             if ("html()".Equals(xpathValue.Attr, StringComparison.OrdinalIgnoreCase))
             {
                 return node.InnerHtml.Trim();

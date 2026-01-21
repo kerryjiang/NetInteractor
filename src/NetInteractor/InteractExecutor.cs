@@ -10,24 +10,11 @@ namespace NetInteractor.Core
 {
     public class InterationExecutor
     {
-        private IServiceProvider serviceProvider;
+        private readonly IWebAccessor _webAccessor;
 
-        private static IServiceProvider CreateDefaultServiceProvider()
+        public InterationExecutor(IWebAccessor webAccessor)
         {
-            var services = new ServiceCollection();
-            services.AddTransient<IWebAccessor, HttpWebAccessor>();
-            return services.BuildServiceProvider();;
-        }
-
-        public InterationExecutor()
-            : this(CreateDefaultServiceProvider())
-        {
-
-        }
-
-        public InterationExecutor(IServiceProvider serviceProvider)
-        {
-            this.serviceProvider = serviceProvider;
+            _webAccessor = webAccessor ?? throw new ArgumentNullException(nameof(webAccessor));
         }
 
         private async Task<InteractionResult> ExecuteTargetAsync(TargetConfig target, InterationContext context, TargetConfig[] allTargets)
@@ -82,7 +69,7 @@ namespace NetInteractor.Core
             var context = new InterationContext();
 
             context.Inputs = inputs;
-            context.WebAccessor = this.serviceProvider.GetService<IWebAccessor>();
+            context.WebAccessor = _webAccessor;
 
             return await ExecuteTargetAsync(entranceTarget, context, targets);
         }

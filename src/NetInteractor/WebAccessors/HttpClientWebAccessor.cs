@@ -8,7 +8,7 @@ using System.Text;
 
 namespace NetInteractor.Core.WebAccessors
 {
-    public class HttpWebAccessor : IWebAccessor
+    public class HttpClientWebAccessor : IWebAccessor
     {
         private readonly string _userAgent;
         private readonly HttpClient _httpClient;
@@ -16,7 +16,7 @@ namespace NetInteractor.Core.WebAccessors
 
         public CookieContainer CookieContainer { get; set; }
 
-        public HttpWebAccessor(string userAgent, CookieContainer cookieContainer)
+        public HttpClientWebAccessor(string userAgent, CookieContainer cookieContainer)
         {
             _userAgent = userAgent;
             CookieContainer = cookieContainer;
@@ -31,7 +31,7 @@ namespace NetInteractor.Core.WebAccessors
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_userAgent);
         }
 
-        public HttpWebAccessor()
+        public HttpClientWebAccessor()
             : this("Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36", new CookieContainer())
         {
         }
