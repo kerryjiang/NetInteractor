@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using PuppeteerSharp;
 
@@ -12,6 +13,7 @@ namespace NetInteractor.WebAccessors
     {
         private IBrowser _browser;
         private readonly LaunchOptions _launchOptions;
+        private readonly SemaphoreSlim _browserLock = new SemaphoreSlim(1, 1);
         private bool _disposed;
 
         public PuppeteerSharpWebAccessor(LaunchOptions launchOptions = null)
@@ -27,11 +29,25 @@ namespace NetInteractor.WebAccessors
         {
             if (_browser == null)
             {
-                // Download browser if needed
-                var browserFetcher = new BrowserFetcher();
-                await browserFetcher.DownloadAsync();
-                
-                _browser = await Puppeteer.LaunchAsync(_launchOptions);
+                await _browserLock.WaitAsync();
+                try
+                {
+                    // Double-check after acquiring the lock
+                    if (_browser == null)
+                    {
+                        // Download browser if needed
+                        var browserFetcher = new BrowserFetcher();
+                        
+                        // Download the browser (it will skip if already downloaded)
+                        await browserFetcher.DownloadAsync();
+                        
+                        _browser = await Puppeteer.LaunchAsync(_launchOptions);
+                    }
+                }
+                finally
+                {
+                    _browserLock.Release();
+                }
             }
             return _browser;
         }
@@ -75,45 +91,67 @@ namespace NetInteractor.WebAccessors
                 var formData = string.Join("&", formValues.Keys.OfType<string>()
                     .Select(k => k + "=" + Uri.EscapeDataString(formValues[k])));
 
-                TaskCompletionSource<IResponse> responseTaskSource = new TaskCompletionSource<IResponse>();
+                var responseTaskSource = new TaskCompletionSource<IResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 
-                page.Request += async (sender, e) =>
+                EventHandler<RequestEventArgs> requestHandler = null;
+                EventHandler<ResponseCreatedEventArgs> responseHandler = null;
+
+                try
                 {
-                    if (e.Request.Url == url)
+                    requestHandler = async (sender, e) =>
                     {
-                        await e.Request.ContinueAsync(new Payload
+                        if (e.Request.Url == url)
                         {
-                            Method = HttpMethod.Post,
-                            PostData = formData,
-                            Headers = e.Request.Headers.Concat(new[]
+                            await e.Request.ContinueAsync(new Payload
                             {
-                                new System.Collections.Generic.KeyValuePair<string, string>(
-                                    "Content-Type", "application/x-www-form-urlencoded")
-                            }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
-                        });
-                    }
-                    else
+                                Method = HttpMethod.Post,
+                                PostData = formData,
+                                Headers = e.Request.Headers.Concat(new[]
+                                {
+                                    new System.Collections.Generic.KeyValuePair<string, string>(
+                                        "Content-Type", "application/x-www-form-urlencoded")
+                                }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
+                            });
+                        }
+                        else
+                        {
+                            await e.Request.ContinueAsync();
+                        }
+                    };
+
+                    responseHandler = (sender, e) =>
                     {
-                        await e.Request.ContinueAsync();
-                    }
-                };
+                        if (e.Response.Url == url)
+                        {
+                            responseTaskSource.TrySetResult(e.Response);
+                        }
+                    };
 
-                page.Response += (sender, e) =>
-                {
-                    if (e.Response.Url == url)
+                    page.Request += requestHandler;
+                    page.Response += responseHandler;
+
+                    // Register cancellation
+                    cts.Token.Register(() => responseTaskSource.TrySetCanceled());
+
+                    // Navigate again to trigger the POST
+                    await page.GoToAsync(url, new NavigationOptions
                     {
-                        responseTaskSource.TrySetResult(e.Response);
-                    }
-                };
+                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+                    });
 
-                // Navigate again to trigger the POST
-                await page.GoToAsync(url, new NavigationOptions
+                    var response = await responseTaskSource.Task;
+                    return await GetResultFromResponse(page, response);
+                }
+                finally
                 {
-                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-                });
-
-                var response = await responseTaskSource.Task;
-                return await GetResultFromResponse(page, response);
+                    // Clean up event handlers
+                    if (requestHandler != null)
+                        page.Request -= requestHandler;
+                    if (responseHandler != null)
+                        page.Response -= responseHandler;
+                    cts.Dispose();
+                }
             }
             finally
             {
@@ -153,9 +191,13 @@ namespace NetInteractor.WebAccessors
                     {
                         mockResponse.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }
-                    catch
+                    catch (ArgumentException)
                     {
                         // Some headers might be content headers, skip them
+                    }
+                    catch (FormatException)
+                    {
+                        // Invalid header format, skip it
                     }
                 }
             }
@@ -176,6 +218,7 @@ namespace NetInteractor.WebAccessors
                 if (disposing)
                 {
                     _browser?.Dispose();
+                    _browserLock?.Dispose();
                 }
                 _disposed = true;
             }
