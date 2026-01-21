@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Specialized;
 using System.IO;
-using Microsoft.Extensions.DependencyInjection;
 using NetInteractor;
 using NetInteractor.Config;
 using NetInteractor.WebAccessors;

@@ -3,7 +3,6 @@ using System.Linq;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
 using NetInteractor.Config;
-using Microsoft.Extensions.DependencyInjection;
 using NetInteractor.WebAccessors;
 
 namespace NetInteractor
