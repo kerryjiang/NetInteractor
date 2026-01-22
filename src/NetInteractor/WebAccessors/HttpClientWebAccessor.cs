@@ -35,7 +35,7 @@ namespace NetInteractor.WebAccessors
         {
         }
 
-        public virtual async Task<ResponseInfo> GetAsync(string url)
+        public virtual async Task<ResponseInfo> GetAsync(string url, Config.IInteractActionConfig config = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
 
@@ -44,7 +44,7 @@ namespace NetInteractor.WebAccessors
             return await GetResultFromResponse(response);
         }
 
-        public virtual async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues)
+        public virtual async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, Config.IInteractActionConfig config = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 

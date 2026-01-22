@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using PuppeteerSharp;
+using NetInteractor.Config;
 
 namespace NetInteractor.WebAccessors
 {
@@ -15,16 +16,14 @@ namespace NetInteractor.WebAccessors
         private readonly LaunchOptions _launchOptions;
         private readonly SemaphoreSlim _browserLock = new SemaphoreSlim(1, 1);
         private bool _disposed;
-        private readonly int _jsRedirectTimeout;
 
-        public PuppeteerSharpWebAccessor(LaunchOptions launchOptions = null, int jsRedirectTimeoutMs = 1000)
+        public PuppeteerSharpWebAccessor(LaunchOptions launchOptions = null)
         {
             _launchOptions = launchOptions ?? new LaunchOptions
             {
                 Headless = true,
                 Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
             };
-            _jsRedirectTimeout = jsRedirectTimeoutMs;
         }
 
         private async Task<IBrowser> GetBrowserAsync()
@@ -79,7 +78,7 @@ namespace NetInteractor.WebAccessors
             return _browser;
         }
 
-        public async Task<ResponseInfo> GetAsync(string url)
+        public async Task<ResponseInfo> GetAsync(string url, IInteractActionConfig config = null)
         {
             var browser = await GetBrowserAsync();
             var page = await browser.NewPageAsync();
@@ -93,31 +92,36 @@ namespace NetInteractor.WebAccessors
                     WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
 
-                // After the page loads, check if JavaScript might trigger a delayed redirect
-                // This handles cases like: setTimeout(() => window.location.href = '/other', 500)
-                // We race between a delay and a navigation wait
-                var delayTask = Task.Delay(_jsRedirectTimeout);
-                var navigationTask = page.WaitForNavigationAsync(new NavigationOptions
+                // Check if JavaScript redirect timeout is configured in options
+                var jsRedirectTimeoutStr = config?.Options?["jsRedirectTimeout"];
+                if (!string.IsNullOrEmpty(jsRedirectTimeoutStr) && int.TryParse(jsRedirectTimeoutStr, out var jsRedirectTimeout))
                 {
-                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-                });
+                    // After the page loads, check if JavaScript might trigger a delayed redirect
+                    // This handles cases like: setTimeout(() => window.location.href = '/other', 500)
+                    // We race between a delay and a navigation wait
+                    var delayTask = Task.Delay(jsRedirectTimeout);
+                    var navigationTask = page.WaitForNavigationAsync(new NavigationOptions
+                    {
+                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+                    });
 
-                var completedTask = await Task.WhenAny(delayTask, navigationTask);
-                
-                if (completedTask == navigationTask)
-                {
-                    // Navigation occurred - await it to get the response and handle any exceptions
-                    try
+                    var completedTask = await Task.WhenAny(delayTask, navigationTask);
+                    
+                    if (completedTask == navigationTask)
                     {
-                        response = await navigationTask;
+                        // Navigation occurred - await it to get the response and handle any exceptions
+                        try
+                        {
+                            response = await navigationTask;
+                        }
+                        catch (PuppeteerException)
+                        {
+                            // Navigation failed or was cancelled - use original response
+                        }
                     }
-                    catch (PuppeteerException)
-                    {
-                        // Navigation failed or was cancelled - use original response
-                    }
+                    // else: delay completed first, meaning no navigation occurred within timeout - use original response
+                    // Note: The navigationTask will be cancelled when the page closes in the finally block
                 }
-                // else: delay completed first, meaning no navigation occurred within timeout - use original response
-                // Note: The navigationTask will be cancelled when the page closes in the finally block
 
                 return await GetResultFromResponse(page, response);
             }
@@ -128,7 +132,7 @@ namespace NetInteractor.WebAccessors
             }
         }
 
-        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues)
+        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, IInteractActionConfig config = null)
         {
             var browser = await GetBrowserAsync();
             var page = await browser.NewPageAsync();

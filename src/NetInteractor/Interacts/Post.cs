@@ -98,7 +98,7 @@ namespace NetInteractor.Interacts
                 }
             }
 
-            return await webAccessor.PostAsync(url, formValues);
+            return await webAccessor.PostAsync(url, formValues, Config);
         }
 
         private NameValueCollection MergeFormValues(InterationContext context, FormInfo form, FormValue[] formValues)

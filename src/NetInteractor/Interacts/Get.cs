@@ -18,7 +18,7 @@ namespace NetInteractor.Interacts
         {
             var url = PrepareValue(context, Config.Url);
             var webAccessor = context.WebAccessor;
-            return await webAccessor.GetAsync(url);
+            return await webAccessor.GetAsync(url, Config);
         }
     }
 }
