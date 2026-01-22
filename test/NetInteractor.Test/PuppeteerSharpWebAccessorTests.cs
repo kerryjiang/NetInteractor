@@ -154,5 +154,31 @@ namespace NetInteractor.Test
             Assert.Contains("Example Domain", result1.Html);
             Assert.Contains("IANA", result2.Html);
         }
+
+        [Fact(Skip = "Requires browser download. Enable for manual testing.")]
+        public async Task GetAsync_HandlesJavaScriptRedirect()
+        {
+            // This test verifies that PuppeteerSharp can handle JavaScript redirects
+            // by waiting for navigation to complete
+            
+            // Arrange
+            using var factory = new Test.TestWebApp.TestWebApplicationFactory(Test.TestWebApp.ServerMode.Kestrel);
+            var url = $"{factory.ServerUrl}/js-redirect-test";
+
+            // Act
+            var result = await _accessor.GetAsync(url);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(200, result.StatusCode);
+            Assert.NotNull(result.Html);
+            
+            // Verify we got redirected to the products page
+            Assert.Contains("Products", result.Html);
+            Assert.Contains("/products", result.Url);
+            
+            // Should NOT contain the "Redirecting..." text from the original page
+            Assert.DoesNotContain("Redirecting...", result.Html);
+        }
     }
 }
