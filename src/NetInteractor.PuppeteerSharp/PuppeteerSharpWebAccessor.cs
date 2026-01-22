@@ -15,14 +15,16 @@ namespace NetInteractor.WebAccessors
         private readonly LaunchOptions _launchOptions;
         private readonly SemaphoreSlim _browserLock = new SemaphoreSlim(1, 1);
         private bool _disposed;
+        private readonly int _jsRedirectTimeout;
 
-        public PuppeteerSharpWebAccessor(LaunchOptions launchOptions = null)
+        public PuppeteerSharpWebAccessor(LaunchOptions launchOptions = null, int jsRedirectTimeoutMs = 1000)
         {
             _launchOptions = launchOptions ?? new LaunchOptions
             {
                 Headless = true,
                 Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
             };
+            _jsRedirectTimeout = jsRedirectTimeoutMs;
         }
 
         private async Task<IBrowser> GetBrowserAsync()
@@ -94,7 +96,7 @@ namespace NetInteractor.WebAccessors
                 // After the page loads, check if JavaScript might trigger a delayed redirect
                 // This handles cases like: setTimeout(() => window.location.href = '/other', 500)
                 // We race between a delay and a navigation wait
-                var delayTask = Task.Delay(1000); // Wait up to 1 second for potential JS redirect
+                var delayTask = Task.Delay(_jsRedirectTimeout);
                 var navigationTask = page.WaitForNavigationAsync(new NavigationOptions
                 {
                     WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
@@ -108,11 +110,13 @@ namespace NetInteractor.WebAccessors
                     response = await navigationTask;
                 }
                 // else: delay completed first, meaning no navigation occurred - use original response
+                // Note: navigationTask will continue running in background but will be cleaned up when page closes
 
                 return await GetResultFromResponse(page, response);
             }
             finally
             {
+                // Close the page. Any pending navigationTask will be aborted when the page closes.
                 await page.CloseAsync();
             }
         }
