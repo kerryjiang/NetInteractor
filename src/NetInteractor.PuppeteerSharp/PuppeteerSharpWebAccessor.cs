@@ -35,13 +35,38 @@ namespace NetInteractor.WebAccessors
                     // Double-check after acquiring the lock
                     if (_browser == null)
                     {
-                        // Download browser if needed
-                        var browserFetcher = new BrowserFetcher();
+                        // Check if a custom executable path is specified via environment variable or launch options
+                        var executablePath = _launchOptions.ExecutablePath ?? 
+                                           Environment.GetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH");
                         
-                        // Download the browser (it will skip if already downloaded)
-                        await browserFetcher.DownloadAsync();
+                        LaunchOptions launchOptions;
                         
-                        _browser = await Puppeteer.LaunchAsync(_launchOptions);
+                        if (string.IsNullOrEmpty(executablePath))
+                        {
+                            // Download browser if needed
+                            var browserFetcher = new BrowserFetcher();
+                            
+                            // Download the browser (it will skip if already downloaded)
+                            await browserFetcher.DownloadAsync();
+                            
+                            launchOptions = _launchOptions;
+                        }
+                        else
+                        {
+                            // Create a new LaunchOptions with the custom executable path
+                            // to avoid modifying the shared instance.
+                            // Note: Only essential properties (Headless, Args) are copied.
+                            // If additional properties are needed, they should be set via
+                            // the constructor's launchOptions parameter.
+                            launchOptions = new LaunchOptions
+                            {
+                                Headless = _launchOptions.Headless,
+                                Args = _launchOptions.Args,
+                                ExecutablePath = executablePath
+                            };
+                        }
+                        
+                        _browser = await Puppeteer.LaunchAsync(launchOptions);
                     }
                 }
                 finally
@@ -79,30 +104,24 @@ namespace NetInteractor.WebAccessors
 
             try
             {
-                // Navigate to the page first
-                await page.GoToAsync(url, new NavigationOptions
-                {
-                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
-                });
-
-                // Set up request interception to modify the request to POST
+                // Set up request interception to modify the initial request to POST
                 await page.SetRequestInterceptionAsync(true);
                 
                 var formData = string.Join("&", formValues.Keys.OfType<string>()
-                    .Select(k => k + "=" + Uri.EscapeDataString(formValues[k])));
+                    .Select(k => k + "=" + Uri.EscapeDataString(formValues[k] ?? string.Empty)));
 
-                var responseTaskSource = new TaskCompletionSource<IResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
-                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var hasIntercepted = false;
                 
                 EventHandler<RequestEventArgs> requestHandler = null;
-                EventHandler<ResponseCreatedEventArgs> responseHandler = null;
 
                 try
                 {
                     requestHandler = async (sender, e) =>
                     {
-                        if (e.Request.Url == url)
+                        // Only intercept the first request to the target URL
+                        if (!hasIntercepted && e.Request.Url == url)
                         {
+                            hasIntercepted = true;
                             await e.Request.ContinueAsync(new Payload
                             {
                                 Method = HttpMethod.Post,
@@ -116,31 +135,20 @@ namespace NetInteractor.WebAccessors
                         }
                         else
                         {
+                            // Allow all other requests (including redirects) to proceed normally
                             await e.Request.ContinueAsync();
                         }
                     };
 
-                    responseHandler = (sender, e) =>
-                    {
-                        if (e.Response.Url == url)
-                        {
-                            responseTaskSource.TrySetResult(e.Response);
-                        }
-                    };
-
                     page.Request += requestHandler;
-                    page.Response += responseHandler;
 
-                    // Register cancellation
-                    cts.Token.Register(() => responseTaskSource.TrySetCanceled());
-
-                    // Navigate again to trigger the POST
-                    await page.GoToAsync(url, new NavigationOptions
+                    // Navigate to the URL - this will be intercepted and turned into a POST
+                    // The navigation will handle any redirects automatically
+                    var response = await page.GoToAsync(url, new NavigationOptions
                     {
                         WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                     });
 
-                    var response = await responseTaskSource.Task;
                     return await GetResultFromResponse(page, response);
                 }
                 finally
@@ -148,9 +156,6 @@ namespace NetInteractor.WebAccessors
                     // Clean up event handlers
                     if (requestHandler != null)
                         page.Request -= requestHandler;
-                    if (responseHandler != null)
-                        page.Response -= responseHandler;
-                    cts.Dispose();
                 }
             }
             finally
