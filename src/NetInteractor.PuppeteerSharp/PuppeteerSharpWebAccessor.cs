@@ -108,7 +108,7 @@ namespace NetInteractor.WebAccessors
                 await page.SetRequestInterceptionAsync(true);
                 
                 var formData = string.Join("&", formValues.Keys.OfType<string>()
-                    .Select(k => k + "=" + Uri.EscapeDataString(formValues[k])));
+                    .Select(k => k + "=" + Uri.EscapeDataString(formValues[k] ?? string.Empty)));
 
                 var hasIntercepted = false;
                 
