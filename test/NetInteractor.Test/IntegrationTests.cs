@@ -399,7 +399,7 @@ namespace NetInteractor.Test
         public async Task TestJavaScriptRedirect_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
         {
             // This test verifies that JavaScript redirects are handled properly when
-            // jsRedirectTimeout option is configured in the config
+            // loadDelay option is configured in the config
             // JavaScript redirects only work with PuppeteerSharp (browser automation)
             // HttpClient cannot execute JavaScript, so we skip this test for HttpClient
             if (webAccessor is HttpClientWebAccessor)

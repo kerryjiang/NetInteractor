@@ -92,14 +92,14 @@ namespace NetInteractor.WebAccessors
                     WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
 
-                // Check if JavaScript redirect timeout is configured in options
-                var jsRedirectTimeoutStr = config?.Options?["jsRedirectTimeout"];
-                if (!string.IsNullOrEmpty(jsRedirectTimeoutStr) && int.TryParse(jsRedirectTimeoutStr, out var jsRedirectTimeout))
+                // Check if load delay is configured in options
+                var loadDelayStr = config?.Options?["loadDelay"];
+                if (!string.IsNullOrEmpty(loadDelayStr) && int.TryParse(loadDelayStr, out var loadDelay))
                 {
                     // After the page loads, check if JavaScript might trigger a delayed redirect
                     // This handles cases like: setTimeout(() => window.location.href = '/other', 500)
                     // We race between a delay and a navigation wait
-                    var delayTask = Task.Delay(jsRedirectTimeout);
+                    var delayTask = Task.Delay(loadDelay);
                     var navigationTask = page.WaitForNavigationAsync(new NavigationOptions
                     {
                         WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
