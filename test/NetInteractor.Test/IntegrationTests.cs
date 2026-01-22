@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Reflection;
@@ -10,9 +12,43 @@ using Xunit;
 
 namespace NetInteractor.Test
 {
-    public class IntegrationTests : IClassFixture<TestWebApplicationFactory>
+    /// <summary>
+    /// Provides web accessor test data for integration tests.
+    /// </summary>
+    public class WebAccessorTestData : IEnumerable<object[]>
     {
-        private readonly TestWebApplicationFactory _factory;
+        private readonly TestWebApplicationFactory _testServerFactory;
+        private readonly TestWebApplicationFactory _kestrelFactory;
+
+        public WebAccessorTestData()
+        {
+            // Create TestServer factory for HttpClient tests (in-memory, faster)
+            _testServerFactory = new TestWebApplicationFactory(ServerMode.TestServer);
+            
+            // Create Kestrel factory for PuppeteerSharp tests (real HTTP endpoint)
+            _kestrelFactory = new TestWebApplicationFactory(ServerMode.Kestrel);
+        }
+
+        public IEnumerator<object[]> GetEnumerator()
+        {
+            // HttpClient accessor with TestServer (in-memory)
+            var httpClient = _testServerFactory.CreateClient();
+            yield return new object[] { new HttpClientWebAccessor(httpClient), _testServerFactory.ServerUrl };
+            
+            // PuppeteerSharp accessor with Kestrel (real HTTP) - disabled by default in CI/CD
+            // Requires Chrome download which needs internet access not available in GitHub Actions
+            // To enable locally: set environment variable ENABLE_PUPPETEER_TESTS=true
+            if (Environment.GetEnvironmentVariable("ENABLE_PUPPETEER_TESTS") == "true")
+            {
+                yield return new object[] { new PuppeteerSharpWebAccessor(), _kestrelFactory.ServerUrl };
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    public class IntegrationTests
+    {
         private static readonly string ScriptsDirectory;
 
         static IntegrationTests()
@@ -28,160 +64,185 @@ namespace NetInteractor.Test
             return ConfigFactory.DeserializeXml<InteractConfig>(xml);
         }
 
-        public IntegrationTests(TestWebApplicationFactory factory)
-        {
-            _factory = factory;
-        }
-
-        [Fact]
-        public async Task TestGetRequest_ExtractTitle()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestGetRequest_ExtractTitle(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("GetRequest_ExtractTitle.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExtractMultipleValues()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestGetRequest_ExtractMultipleValues(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("GetRequest_ExtractMultipleValues.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Contains("Value One", result.Outputs["values"]);
             Assert.Contains("Value Two", result.Outputs["values"]);
             Assert.Contains("Value Three", result.Outputs["values"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExtractAttribute()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestGetRequest_ExtractAttribute(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("GetRequest_ExtractAttribute.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("/images/test.png", result.Outputs["imageSrc"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExtractWithRegex()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestGetRequest_ExtractWithRegex(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("GetRequest_ExtractWithRegex.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("98765", result.Outputs["orderId"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExpectedValueValidation_Success()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestGetRequest_ExpectedValueValidation_Success(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("GetRequest_ExpectedValueValidation_Success.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestGetRequest_ExpectedValueValidation_Failure()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestGetRequest_ExpectedValueValidation_Failure(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("GetRequest_ExpectedValueValidation_Failure.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.False(result.Ok);
             Assert.Contains("Expected", result.Message);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestPostRequest_FormSubmission()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestPostRequest_FormSubmission(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("PostRequest_FormSubmission.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestPostRequest_FormSubmissionWithOutputExtraction()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestPostRequest_FormSubmissionWithOutputExtraction(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("PostRequest_FormSubmissionWithOutputExtraction.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Jane Smith", result.Outputs["customerName"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestLoginFlow_WithInputParameters()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestLoginFlow_WithInputParameters(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-
-            // This test focuses on input parameter substitution
             var config = LoadConfig("LoginFlow_WithInputParameters.config");
 
             var inputs = new NameValueCollection
             {
+                ["BaseUrl"] = baseUrl,
                 ["BillingName"] = "Test User",
                 ["Email"] = "test@example.com"
             };
@@ -193,60 +254,66 @@ namespace NetInteractor.Test
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Test User", result.Outputs["customerName"]);
             Assert.Equal("test@example.com", result.Outputs["customerEmail"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestMultiStepWorkflow_ShoppingCart()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestMultiStepWorkflow_ShoppingCart(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-
-            // This test focuses on multi-step workflow - note that outputs from later steps
-            // may overwrite earlier outputs if they use the same context
             var config = LoadConfig("MultiStepWorkflow_ShoppingCart.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
-            // Check that cart outputs are available (final step outputs)
             Assert.Equal("$25.00", result.Outputs["cartTotal"]);
-            Assert.Equal("Medium", result.Outputs["itemSize"]); // Default cart item
+            Assert.Equal("Medium", result.Outputs["itemSize"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestCallTarget_ReusableWorkflow()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestCallTarget_ReusableWorkflow(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
-
-            // This test focuses on the call target functionality
             var config = LoadConfig("CallTarget_ReusableWorkflow.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Data Extraction Test", result.Outputs["title"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestConditionalExecution_IfStatement()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestConditionalExecution_IfStatement(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("ConditionalExecution_IfStatement.config");
 
             var inputs = new NameValueCollection
             {
+                ["BaseUrl"] = baseUrl,
                 ["ShouldLogin"] = "false"
             };
 
@@ -256,61 +323,75 @@ namespace NetInteractor.Test
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Data Extraction Test", result.Outputs["title"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestExecuteSpecificTarget()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestExecuteSpecificTarget(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("ExecuteSpecificTarget.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act - Execute specific target instead of default
-            var result = await executor.ExecuteAsync(config, null, "Products");
+            var result = await executor.ExecuteAsync(config, inputs, "Products");
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Test Product", result.Outputs["productName"]);
             Assert.Null(result.Outputs["title"]); // Should not have executed Main target
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestRedirect_301_FollowsRedirect()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestRedirect_301_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            // Use TestHttpClientWebAccessor which manually handles redirects
-            // because HttpClient from TestServer doesn't support AllowAutoRedirect
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("RedirectTest.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act - Should follow 301 redirect from /redirect-test to /products
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Products", result.Outputs["title"]); // Should get products page after redirect
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
 
-        [Fact]
-        public async Task TestRedirect_AfterPost_FollowsRedirect()
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestRedirect_AfterPost_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
         {
             // Arrange
-            var client = _factory.CreateClient();
-            var webAccessor = new HttpClientWebAccessor(client);
             var executor = new InterationExecutor(webAccessor);
             var config = LoadConfig("RedirectAfterPostTest.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
             // Act - Should follow redirect after POST from /post-redirect-test to /post-redirect-result
-            var result = await executor.ExecuteAsync(config);
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
             Assert.Equal("Post Redirect Success", result.Outputs["title"]);
             Assert.Equal("Redirect User", result.Outputs["customerName"]);
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
         }
     }
 }

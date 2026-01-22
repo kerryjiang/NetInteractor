@@ -6,17 +6,27 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 
 namespace NetInteractor.Test.TestWebApp
 {
+    public enum ServerMode
+    {
+        TestServer,  // In-memory TestServer for HttpClient
+        Kestrel      // Real HTTP server for PuppeteerSharp
+    }
+
     public class TestWebApplicationFactory : IDisposable
     {
         private readonly WebApplication _app;
-        private readonly TestServer _server;
+        private readonly HttpClient _httpClient;
+        private readonly TestServer _testServer;
         private static readonly string PagesDirectory;
+        private readonly string _serverUrl;
+        private readonly ServerMode _mode;
 
         static TestWebApplicationFactory()
         {
@@ -29,10 +39,26 @@ namespace NetInteractor.Test.TestWebApp
             return File.ReadAllText(Path.Combine(PagesDirectory, pageName));
         }
 
-        public TestWebApplicationFactory()
+        public TestWebApplicationFactory(ServerMode mode = ServerMode.TestServer)
         {
+            _mode = mode;
             var builder = WebApplication.CreateBuilder();
-            builder.WebHost.UseTestServer();
+            
+            if (mode == ServerMode.Kestrel)
+            {
+                // Configure to use Kestrel for real HTTP (required for PuppeteerSharp)
+                builder.WebHost.UseKestrel(options =>
+                {
+                    // Use a dynamic port for Kestrel to avoid conflicts
+                    // Listen on IPv4 loopback with dynamic port
+                    options.Listen(System.Net.IPAddress.Loopback, 0);
+                });
+            }
+            else
+            {
+                // Use TestServer for in-memory testing (faster for HttpClient)
+                builder.WebHost.UseTestServer();
+            }
             
             // Add services
             builder.Services.AddRouting();
@@ -174,16 +200,48 @@ namespace NetInteractor.Test.TestWebApp
             });
 
             _app.Start();
-            _server = _app.GetTestServer();
+            
+            if (mode == ServerMode.Kestrel)
+            {
+                // Get the actual URL assigned by Kestrel
+                var addresses = _app.Urls;
+                if (addresses.Count > 0)
+                {
+                    _serverUrl = addresses.First();
+                }
+                else
+                {
+                    _serverUrl = "http://localhost:5000"; // Fallback
+                }
+                
+                // Create an HttpClient without BaseAddress so it works with absolute URLs
+                _httpClient = new HttpClient();
+            }
+            else
+            {
+                // For TestServer, get the TestServer instance and create client
+                _testServer = _app.GetTestServer();
+                _httpClient = _testServer.CreateClient();
+                _serverUrl = "http://localhost"; // TestServer doesn't have real URL, use placeholder
+            }
         }
 
         public HttpClient CreateClient()
         {
-            return _server.CreateClient();
+            return _httpClient;
         }
+
+        /// <summary>
+        /// Gets the base URL of the server.
+        /// For TestServer: returns "http://localhost" (placeholder, works with relative URLs)
+        /// For Kestrel: returns actual server URL like "http://127.0.0.1:12345"
+        /// </summary>
+        public string ServerUrl => _serverUrl;
 
         public void Dispose()
         {
+            _httpClient?.Dispose();
+            _testServer?.Dispose();
             _app?.DisposeAsync().AsTask().Wait();
         }
     }
