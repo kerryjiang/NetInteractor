@@ -106,17 +106,24 @@ namespace NetInteractor.WebAccessors
                 
                 if (completedTask == navigationTask)
                 {
-                    // Navigation occurred, use the new response
-                    response = await navigationTask;
+                    // Navigation occurred - await it to get the response and handle any exceptions
+                    try
+                    {
+                        response = await navigationTask;
+                    }
+                    catch (PuppeteerException)
+                    {
+                        // Navigation failed or was cancelled - use original response
+                    }
                 }
-                // else: delay completed first, meaning no navigation occurred - use original response
-                // Note: navigationTask will continue running in background but will be cleaned up when page closes
+                // else: delay completed first, meaning no navigation occurred within timeout - use original response
+                // Note: The navigationTask will be cancelled when the page closes in the finally block
 
                 return await GetResultFromResponse(page, response);
             }
             finally
             {
-                // Close the page. Any pending navigationTask will be aborted when the page closes.
+                // Close the page. Any pending navigation will be cancelled.
                 await page.CloseAsync();
             }
         }
