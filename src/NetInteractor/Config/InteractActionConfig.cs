@@ -9,8 +9,6 @@ namespace NetInteractor.Config
     public interface IInteractActionConfig
     {
         IInteractAction GetAction();
-
-        NameValueCollection Options { get; }
     }
 
     public abstract class InteractActionConfig : IInteractActionConfig

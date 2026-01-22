@@ -8,8 +8,8 @@ namespace NetInteractor
 {
     public interface IWebAccessor
     {
-        Task<ResponseInfo> GetAsync(string url, IInteractActionConfig config = null);
+        Task<ResponseInfo> GetAsync(string url, InteractActionConfig config = null);
 
-        Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, IInteractActionConfig config = null);
+        Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, InteractActionConfig config = null);
     }
 }

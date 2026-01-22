@@ -78,7 +78,7 @@ namespace NetInteractor.WebAccessors
             return _browser;
         }
 
-        public async Task<ResponseInfo> GetAsync(string url, IInteractActionConfig config = null)
+        public async Task<ResponseInfo> GetAsync(string url, InteractActionConfig config = null)
         {
             var browser = await GetBrowserAsync();
             var page = await browser.NewPageAsync();
@@ -132,7 +132,7 @@ namespace NetInteractor.WebAccessors
             }
         }
 
-        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, IInteractActionConfig config = null)
+        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, InteractActionConfig config = null)
         {
             var browser = await GetBrowserAsync();
             var page = await browser.NewPageAsync();
