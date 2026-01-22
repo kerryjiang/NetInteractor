@@ -93,7 +93,7 @@ namespace NetInteractor.WebAccessors
                 });
 
                 // Check if load delay is configured in options
-                var loadDelayStr = config?.Options?["loadDelay"];
+                var loadDelayStr = config?.Options?.FirstOrDefault(attr => attr.Name == "loadDelay")?.Value;
                 if (!string.IsNullOrEmpty(loadDelayStr) && int.TryParse(loadDelayStr, out var loadDelay))
                 {
                     // After the page loads, check if JavaScript might trigger a delayed redirect

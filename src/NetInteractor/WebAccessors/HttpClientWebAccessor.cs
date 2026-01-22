@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text;
+using NetInteractor.Config;
 
 namespace NetInteractor.WebAccessors
 {
@@ -35,7 +36,7 @@ namespace NetInteractor.WebAccessors
         {
         }
 
-        public virtual async Task<ResponseInfo> GetAsync(string url, Config.InteractActionConfig config = null)
+        public virtual async Task<ResponseInfo> GetAsync(string url, InteractActionConfig config = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
 
@@ -44,7 +45,7 @@ namespace NetInteractor.WebAccessors
             return await GetResultFromResponse(response);
         }
 
-        public virtual async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, Config.InteractActionConfig config = null)
+        public virtual async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, InteractActionConfig config = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
