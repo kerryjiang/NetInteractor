@@ -27,6 +27,28 @@ jobs:
               run: |
                 echo "DOTNET_CLI_TELEMETRY_OPTOUT=1" >> $GITHUB_ENV
                 echo "DOTNET_hostBuilder:reloadConfigOnChange=false" >> $GITHUB_ENV
+                echo "ENABLE_PUPPETEER_TESTS=true" >> $GITHUB_ENV
+            - name: Set Puppeteer executable path (Linux)
+              if: runner.os == 'Linux'
+              run: echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium" >> $GITHUB_ENV
+            - name: Set Puppeteer executable path (macOS)
+              if: runner.os == 'macOS'
+              run: |
+                # macOS usually has Chrome installed in /Applications
+                if [ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+                  echo "PUPPETEER_EXECUTABLE_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" >> $GITHUB_ENV
+                elif [ -f "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
+                  echo "PUPPETEER_EXECUTABLE_PATH=/Applications/Chromium.app/Contents/MacOS/Chromium" >> $GITHUB_ENV
+                fi
+            - name: Set Puppeteer executable path (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                # Windows might have Chrome in Program Files
+                $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+                if (Test-Path $chromePath) {
+                  echo "PUPPETEER_EXECUTABLE_PATH=$chromePath" >> $env:GITHUB_ENV
+                }
             - name: Clean
               run: |
                 dotnet clean ./NetInteractor.sln

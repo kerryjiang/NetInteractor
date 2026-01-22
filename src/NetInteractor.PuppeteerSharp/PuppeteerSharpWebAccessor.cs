@@ -35,11 +35,23 @@ namespace NetInteractor.WebAccessors
                     // Double-check after acquiring the lock
                     if (_browser == null)
                     {
-                        // Download browser if needed
-                        var browserFetcher = new BrowserFetcher();
+                        // Check if a custom executable path is specified via environment variable or launch options
+                        var executablePath = _launchOptions.ExecutablePath ?? 
+                                           Environment.GetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH");
                         
-                        // Download the browser (it will skip if already downloaded)
-                        await browserFetcher.DownloadAsync();
+                        if (string.IsNullOrEmpty(executablePath))
+                        {
+                            // Download browser if needed
+                            var browserFetcher = new BrowserFetcher();
+                            
+                            // Download the browser (it will skip if already downloaded)
+                            await browserFetcher.DownloadAsync();
+                        }
+                        else
+                        {
+                            // Use the specified executable path
+                            _launchOptions.ExecutablePath = executablePath;
+                        }
                         
                         _browser = await Puppeteer.LaunchAsync(_launchOptions);
                     }
