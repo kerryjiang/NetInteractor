@@ -92,25 +92,22 @@ namespace NetInteractor.WebAccessors
                 });
 
                 // After the page loads, check if JavaScript might trigger a delayed redirect
-                // We wait for a short period to see if a navigation event occurs
                 // This handles cases like: setTimeout(() => window.location.href = '/other', 500)
-                await Task.Delay(100); // Small initial delay to let any immediate JS execute
+                // We race between a delay and a navigation wait
+                var delayTask = Task.Delay(1000); // Wait up to 1 second for potential JS redirect
+                var navigationTask = page.WaitForNavigationAsync(new NavigationOptions
+                {
+                    WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+                });
+
+                var completedTask = await Task.WhenAny(delayTask, navigationTask);
                 
-                try
+                if (completedTask == navigationTask)
                 {
-                    // Try to wait for a navigation with a timeout
-                    // If JavaScript triggers a redirect, we'll catch it here
-                    response = await page.WaitForNavigationAsync(new NavigationOptions
-                    {
-                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 },
-                        Timeout = 1500 // Wait up to 1.5 seconds for JS redirect
-                    });
+                    // Navigation occurred, use the new response
+                    response = await navigationTask;
                 }
-                catch (PuppeteerException)
-                {
-                    // No additional navigation occurred - this is normal for non-redirecting pages
-                    // Use the original response from GoToAsync
-                }
+                // else: delay completed first, meaning no navigation occurred - use original response
 
                 return await GetResultFromResponse(page, response);
             }
