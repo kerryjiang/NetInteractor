@@ -39,6 +39,8 @@ namespace NetInteractor.WebAccessors
                         var executablePath = _launchOptions.ExecutablePath ?? 
                                            Environment.GetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH");
                         
+                        LaunchOptions launchOptions;
+                        
                         if (string.IsNullOrEmpty(executablePath))
                         {
                             // Download browser if needed
@@ -46,14 +48,22 @@ namespace NetInteractor.WebAccessors
                             
                             // Download the browser (it will skip if already downloaded)
                             await browserFetcher.DownloadAsync();
+                            
+                            launchOptions = _launchOptions;
                         }
                         else
                         {
-                            // Use the specified executable path
-                            _launchOptions.ExecutablePath = executablePath;
+                            // Create a new LaunchOptions with the custom executable path
+                            // to avoid modifying the shared instance
+                            launchOptions = new LaunchOptions
+                            {
+                                Headless = _launchOptions.Headless,
+                                Args = _launchOptions.Args,
+                                ExecutablePath = executablePath
+                            };
                         }
                         
-                        _browser = await Puppeteer.LaunchAsync(_launchOptions);
+                        _browser = await Puppeteer.LaunchAsync(launchOptions);
                     }
                 }
                 finally

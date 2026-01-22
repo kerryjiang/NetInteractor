@@ -30,7 +30,15 @@ jobs:
                 echo "ENABLE_PUPPETEER_TESTS=true" >> $GITHUB_ENV
             - name: Set Puppeteer executable path (Linux)
               if: runner.os == 'Linux'
-              run: echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium" >> $GITHUB_ENV
+              run: |
+                # Check for Chromium in common locations on Ubuntu
+                if [ -f "/usr/bin/chromium" ]; then
+                  echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium" >> $GITHUB_ENV
+                elif [ -f "/usr/bin/chromium-browser" ]; then
+                  echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser" >> $GITHUB_ENV
+                elif [ -f "/usr/bin/google-chrome" ]; then
+                  echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome" >> $GITHUB_ENV
+                fi
             - name: Set Puppeteer executable path (macOS)
               if: runner.os == 'macOS'
               run: |
@@ -44,10 +52,17 @@ jobs:
               if: runner.os == 'Windows'
               shell: pwsh
               run: |
-                # Windows might have Chrome in Program Files
-                $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-                if (Test-Path $chromePath) {
-                  echo "PUPPETEER_EXECUTABLE_PATH=$chromePath" >> $env:GITHUB_ENV
+                # Check for Chrome in common Windows locations
+                $chromePaths = @(
+                  "C:\Program Files\Google\Chrome\Application\chrome.exe",
+                  "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                  "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+                )
+                foreach ($path in $chromePaths) {
+                  if (Test-Path $path) {
+                    echo "PUPPETEER_EXECUTABLE_PATH=$path" >> $env:GITHUB_ENV
+                    break
+                  }
                 }
             - name: Clean
               run: |
