@@ -199,6 +199,12 @@ namespace NetInteractor.Test.TestWebApp
                 await context.Response.WriteAsync(html);
             });
 
+            // JavaScript redirect test endpoint
+            _app.MapGet("/js-redirect-test", async context =>
+            {
+                await context.Response.WriteAsync(LoadPage("js-redirect.html"));
+            });
+
             _app.Start();
             
             if (mode == ServerMode.Kestrel)

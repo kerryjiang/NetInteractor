@@ -80,7 +80,7 @@ namespace NetInteractor.Interacts
         private Task<ResponseInfo> MakeRedirectRequest(InterationContext context, string redirectUrl)
         {
             var webAccessor = context.WebAccessor;
-            return webAccessor.GetAsync(redirectUrl);
+            return webAccessor.GetAsync(redirectUrl, Config);
         }
 
         private async Task<ResponseInfo> MakeRequestInternal(InterationContext context, string redirectUrl = null)

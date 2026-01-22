@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace NetInteractor.Config
@@ -18,6 +19,9 @@ namespace NetInteractor.Config
 
         [XmlAttribute("expectedHttpStatusCodes")]        
         public string ExpectedHttpStatusCodes { get; set; }
+
+        [XmlAnyAttribute]
+        public XmlAttribute[] Options { get; set; }
 
         public abstract IInteractAction GetAction();
     }

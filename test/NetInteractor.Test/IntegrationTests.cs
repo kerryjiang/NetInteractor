@@ -393,5 +393,36 @@ namespace NetInteractor.Test
             if (webAccessor is IDisposable disposable)
                 disposable.Dispose();
         }
+
+        [Theory]
+        [ClassData(typeof(WebAccessorTestData))]
+        public async Task TestJavaScriptRedirect_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
+        {
+            // This test verifies that JavaScript redirects are handled properly when
+            // loadDelay option is configured in the config
+            // JavaScript redirects only work with PuppeteerSharp (browser automation)
+            // HttpClient cannot execute JavaScript, so we skip this test for HttpClient
+            if (webAccessor is HttpClientWebAccessor)
+            {
+                // Skip test for HttpClient - it cannot handle JavaScript redirects
+                return;
+            }
+
+            // Arrange
+            var executor = new InterationExecutor(webAccessor);
+            var config = LoadConfig("JavaScriptRedirectTest.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
+
+            // Act - Should follow JavaScript redirect from /js-redirect-test to /products
+            var result = await executor.ExecuteAsync(config, inputs);
+
+            // Assert
+            Assert.True(result.Ok, result.Message);
+            Assert.Equal("Products", result.Outputs["title"]); // Should get products page after redirect
+            
+            // Cleanup
+            if (webAccessor is IDisposable disposable)
+                disposable.Dispose();
+        }
     }
 }

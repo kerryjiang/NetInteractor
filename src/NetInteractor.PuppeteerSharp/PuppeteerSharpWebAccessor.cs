@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using PuppeteerSharp;
+using NetInteractor.Config;
 
 namespace NetInteractor.WebAccessors
 {
@@ -77,27 +78,61 @@ namespace NetInteractor.WebAccessors
             return _browser;
         }
 
-        public async Task<ResponseInfo> GetAsync(string url)
+        public async Task<ResponseInfo> GetAsync(string url, InteractActionConfig config = null)
         {
             var browser = await GetBrowserAsync();
             var page = await browser.NewPageAsync();
 
             try
             {
+                // Navigate to the URL and wait for network to be idle
+                // This will handle the initial page load and any immediate redirects
                 var response = await page.GoToAsync(url, new NavigationOptions
                 {
                     WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
 
+                // Check if load delay is configured in options
+                var loadDelayStr = config?.Options?.FirstOrDefault(attr => attr.Name == "loadDelay")?.Value;
+                if (!string.IsNullOrEmpty(loadDelayStr) && int.TryParse(loadDelayStr, out var loadDelay))
+                {
+                    // After the page loads, check if JavaScript might trigger a delayed redirect
+                    // This handles cases like: setTimeout(() => window.location.href = '/other', 500)
+                    // We race between a delay and a navigation wait
+                    var delayTask = Task.Delay(loadDelay);
+                    var navigationTask = page.WaitForNavigationAsync(new NavigationOptions
+                    {
+                        WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+                    });
+
+                    var completedTask = await Task.WhenAny(delayTask, navigationTask);
+                    
+                    if (completedTask == navigationTask)
+                    {
+                        // Navigation occurred - await it to get the response and handle any exceptions
+                        try
+                        {
+                            response = await navigationTask;
+                        }
+                        catch (PuppeteerException)
+                        {
+                            // Navigation failed or was cancelled - use original response
+                        }
+                    }
+                    // else: delay completed first, meaning no navigation occurred within timeout - use original response
+                    // Note: The navigationTask will be cancelled when the page closes in the finally block
+                }
+
                 return await GetResultFromResponse(page, response);
             }
             finally
             {
+                // Close the page. Any pending navigation will be cancelled.
                 await page.CloseAsync();
             }
         }
 
-        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues)
+        public async Task<ResponseInfo> PostAsync(string url, NameValueCollection formValues, InteractActionConfig config = null)
         {
             var browser = await GetBrowserAsync();
             var page = await browser.NewPageAsync();
