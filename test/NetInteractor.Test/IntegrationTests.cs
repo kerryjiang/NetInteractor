@@ -398,7 +398,8 @@ namespace NetInteractor.Test
         [ClassData(typeof(WebAccessorTestData))]
         public async Task TestJavaScriptRedirect_FollowsRedirect(IWebAccessor webAccessor, string baseUrl)
         {
-            // This test verifies that JavaScript redirects are handled properly
+            // This test verifies that JavaScript redirects are handled properly when
+            // jsRedirectTimeout option is configured in the config
             // JavaScript redirects only work with PuppeteerSharp (browser automation)
             // HttpClient cannot execute JavaScript, so we skip this test for HttpClient
             if (webAccessor is HttpClientWebAccessor)
@@ -408,22 +409,16 @@ namespace NetInteractor.Test
             }
 
             // Arrange
-            var url = $"{baseUrl}/js-redirect-test";
+            var executor = new InterationExecutor(webAccessor);
+            var config = LoadConfig("JavaScriptRedirectTest.config");
+            var inputs = new NameValueCollection { ["BaseUrl"] = baseUrl };
 
-            // Act
-            var result = await webAccessor.GetAsync(url);
+            // Act - Should follow JavaScript redirect from /js-redirect-test to /products
+            var result = await executor.ExecuteAsync(config, inputs);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(200, result.StatusCode);
-            Assert.NotNull(result.Html);
-            
-            // Verify we got redirected to the products page
-            Assert.Contains("Products", result.Html);
-            Assert.Contains("/products", result.Url);
-            
-            // Should NOT contain the "Redirecting..." text from the original page
-            Assert.DoesNotContain("Redirecting...", result.Html);
+            Assert.True(result.Ok, result.Message);
+            Assert.Equal("Products", result.Outputs["title"]); // Should get products page after redirect
             
             // Cleanup
             if (webAccessor is IDisposable disposable)
