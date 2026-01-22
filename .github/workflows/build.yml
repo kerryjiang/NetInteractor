@@ -32,6 +32,8 @@ jobs:
               if: runner.os == 'Linux'
               run: |
                 # Check for Chromium in common locations on Ubuntu
+                # If not found, PUPPETEER_EXECUTABLE_PATH won't be set and
+                # PuppeteerSharp will attempt to download Chromium (which may fail in restricted environments)
                 if [ -f "/usr/bin/chromium" ]; then
                   echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium" >> $GITHUB_ENV
                 elif [ -f "/usr/bin/chromium-browser" ]; then
@@ -43,6 +45,8 @@ jobs:
               if: runner.os == 'macOS'
               run: |
                 # macOS usually has Chrome installed in /Applications
+                # If not found, PUPPETEER_EXECUTABLE_PATH won't be set and
+                # PuppeteerSharp will attempt to download Chromium
                 if [ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
                   echo "PUPPETEER_EXECUTABLE_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" >> $GITHUB_ENV
                 elif [ -f "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
@@ -53,6 +57,8 @@ jobs:
               shell: pwsh
               run: |
                 # Check for Chrome in common Windows locations
+                # If not found, PUPPETEER_EXECUTABLE_PATH won't be set and
+                # PuppeteerSharp will attempt to download Chromium
                 $chromePaths = @(
                   "C:\Program Files\Google\Chrome\Application\chrome.exe",
                   "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",

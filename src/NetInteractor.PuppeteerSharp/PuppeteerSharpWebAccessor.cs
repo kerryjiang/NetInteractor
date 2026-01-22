@@ -54,7 +54,10 @@ namespace NetInteractor.WebAccessors
                         else
                         {
                             // Create a new LaunchOptions with the custom executable path
-                            // to avoid modifying the shared instance
+                            // to avoid modifying the shared instance.
+                            // Note: Only essential properties (Headless, Args) are copied.
+                            // If additional properties are needed, they should be set via
+                            // the constructor's launchOptions parameter.
                             launchOptions = new LaunchOptions
                             {
                                 Headless = _launchOptions.Headless,
