@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetInteractor.Test", "test\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetInteractor.PuppeteerSharp", "src\NetInteractor.PuppeteerSharp\NetInteractor.PuppeteerSharp.csproj", "{96C0F6DB-7F80-4E41-B9E8-75C5F750B4BF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetInteractor.Playwright", "src\NetInteractor.Playwright\NetInteractor.Playwright.csproj", "{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,18 @@ Global
 		{96C0F6DB-7F80-4E41-B9E8-75C5F750B4BF}.Release|x64.Build.0 = Release|Any CPU
 		{96C0F6DB-7F80-4E41-B9E8-75C5F750B4BF}.Release|x86.ActiveCfg = Release|Any CPU
 		{96C0F6DB-7F80-4E41-B9E8-75C5F750B4BF}.Release|x86.Build.0 = Release|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Debug|x64.Build.0 = Debug|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Debug|x86.Build.0 = Debug|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Release|x64.ActiveCfg = Release|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Release|x64.Build.0 = Release|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Release|x86.ActiveCfg = Release|Any CPU
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -65,5 +79,6 @@ Global
 		{75781078-1761-4EDD-A872-5F71D1FF9721} = {F5108642-5386-4F95-ACF8-8DA0AD621820}
 		{A9186BD7-EFFC-4B4D-B828-C4F4AA924C50} = {F5108642-5386-4F95-ACF8-8DA0AD621820}
 		{96C0F6DB-7F80-4E41-B9E8-75C5F750B4BF} = {F5108642-5386-4F95-ACF8-8DA0AD621820}
+		{1451EBF6-EF0F-4F7E-8F3E-7529AF5F9E62} = {F5108642-5386-4F95-ACF8-8DA0AD621820}
 	EndGlobalSection
 EndGlobal
