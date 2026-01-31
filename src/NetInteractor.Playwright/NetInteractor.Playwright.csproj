@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
+    <Authors>Kerry Jiang</Authors>
+    <Description>Playwright implementation of IWebAccessor for NetInteractor - enables browser automation with Chromium/Firefox/WebKit.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageTags>Web;Automation;Html;Scraping;Testing;Playwright;Browser;WebAutomation;Headless;Chromium;Firefox;WebKit</PackageTags>
+    <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <PackageReadmeFile>v$(PackageVersion).md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <None Include="../../releaseNotes/v$(PackageVersion).md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NetInteractor/NetInteractor.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" />
+  </ItemGroup>
+</Project>

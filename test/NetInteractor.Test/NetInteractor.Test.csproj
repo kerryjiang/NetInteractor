@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/NetInteractor/NetInteractor.csproj" />
     <ProjectReference Include="../../src/NetInteractor.PuppeteerSharp/NetInteractor.PuppeteerSharp.csproj" />
+    <ProjectReference Include="../../src/NetInteractor.Playwright/NetInteractor.Playwright.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Html\*.html" CopyToOutputDirectory="Always" />

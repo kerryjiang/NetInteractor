@@ -42,6 +42,13 @@ namespace NetInteractor.Test
             {
                 yield return new object[] { new PuppeteerSharpWebAccessor(), _kestrelFactory.ServerUrl };
             }
+
+            // Playwright accessor with Kestrel (real HTTP) - disabled by default in CI/CD
+            // Requires browser download; enable locally via ENABLE_PLAYWRIGHT_TESTS=true
+            if (Environment.GetEnvironmentVariable("ENABLE_PLAYWRIGHT_TESTS") == "true")
+            {
+                yield return new object[] { new PlaywrightWebAccessor(), _kestrelFactory.ServerUrl };
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
