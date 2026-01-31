@@ -23,6 +23,7 @@ A powerful web operation automation library for .NET that enables you to define 
 - **Reusable Targets**: Define named targets and call them from other targets
 - **Modern HTTP Client**: Uses `HttpClient` for better performance and reliability
 - **Cross-Platform**: Supports .NET Standard 2.0, .NET 8.0, and .NET 9.0
+- **Browser Automation**: Optional Playwright integration for JavaScript-rendered pages
 
 ## 📦 Installation
 
@@ -30,6 +31,12 @@ Install via NuGet Package Manager:
 
 ```bash
 dotnet add package NetInteractor
+```
+
+For browser automation with JavaScript rendering, also install the Playwright package:
+
+```bash
+dotnet add package NetInteractor.Playwright
 ```
 
 Or via the Package Manager Console:
@@ -120,6 +127,28 @@ else
     Console.WriteLine($"Automation failed: {result.Message}");
 }
 ```
+
+### 3. Using Playwright for JavaScript-Rendered Pages
+
+For websites that require JavaScript rendering (e.g., SPAs, dynamic content), use the Playwright web accessor:
+
+```csharp
+using NetInteractor;
+using NetInteractor.Config;
+using NetInteractor.WebAccessors;
+
+// Load the configuration
+var config = ConfigFactory.DeserializeXml<InteractConfig>("Scripts/Shop.config");
+
+// Create the executor with a Playwright accessor for JavaScript support
+await using var webAccessor = new PlaywrightWebAccessor();
+var executor = new InterationExecutor(webAccessor);
+
+// Execute the automation (same as before)
+var result = await executor.ExecuteAsync(config, inputs);
+```
+
+> **Note**: Playwright requires browser binaries. Run `playwright install chromium` to install the required browser.
 
 ## 📖 Script Reference
 
@@ -261,6 +290,8 @@ NetInteractor
   - HtmlAgilityPack (HTML parsing)
   - Microsoft.Extensions.Logging (Logging support)
   - Microsoft.Extensions.DependencyInjection (DI support)
+- Optional Dependencies (for browser automation):
+  - Microsoft.Playwright (NetInteractor.Playwright package)
 
 ## 📄 License
 
