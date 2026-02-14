@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
     <Authors>Kerry Jiang</Authors>
     <Description>PuppeteerSharp implementation of IWebAccessor for NetInteractor - enables browser automation with headless Chrome/Chromium for advanced web interactions.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

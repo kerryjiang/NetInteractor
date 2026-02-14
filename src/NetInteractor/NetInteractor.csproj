@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
     <Authors>Kerry Jiang</Authors>
     <Description>A powerful web operation automation library for .NET that enables you to define and execute complex web interactions using simple XML scripts. Supports web testing, scraping, form automation, and workflow orchestration.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
