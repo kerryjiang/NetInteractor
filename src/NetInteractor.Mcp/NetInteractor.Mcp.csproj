@@ -21,4 +21,7 @@
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetInteractor.Mcp.Test" />
+  </ItemGroup>
 </Project>

@@ -118,6 +118,7 @@ namespace NetInteractor.Mcp
     {
         private readonly IWebAccessor _webAccessor;
         private readonly Tool _protocolTool;
+        private readonly IReadOnlyList<object> _outputMetadata;
 
         /// <summary>
         /// Initializes a new instance of the NetInteractorTool class with the default PlaywrightWebAccessor.
@@ -164,6 +165,9 @@ namespace NetInteractor.Mcp
                 Description = "Executes a NetInteractor XML script for web automation. Supports GET requests, form POST submissions, conditional logic (if), and calling other targets. Use XPath expressions to extract data from HTML. Variables use $(Name) syntax.",
                 InputSchema = JsonDocument.Parse(inputSchemaJson).RootElement
             };
+
+            // Build output metadata
+            _outputMetadata = new List<object>(GetOutputMetadata().Values);
         }
 
         /// <summary>
@@ -172,9 +176,9 @@ namespace NetInteractor.Mcp
         public override Tool ProtocolTool => _protocolTool;
 
         /// <summary>
-        /// Gets the tool metadata.
+        /// Gets the tool metadata including output schema information.
         /// </summary>
-        public override IReadOnlyList<object> Metadata => Array.Empty<object>();
+        public override IReadOnlyList<object> Metadata => _outputMetadata;
 
         /// <summary>
         /// Invokes the tool with the given parameters.
@@ -211,38 +215,38 @@ namespace NetInteractor.Mcp
                 };
             }
 
-            var result = await ExecuteScriptAsync(script, inputs, target);
+            var result = await ExecuteScriptInternalAsync(script, inputs, target);
 
-            var outputText = result.Ok
-                ? $"Success: {result.Message ?? "Script executed successfully."}\nOutputs: {FormatOutputs(result.Outputs)}"
-                : $"Failed: {result.Message}";
-
-            return new CallToolResult
+            if (result.Ok)
             {
-                Content = new List<ContentBlock>
+                // Return the outputs directly as JSON for the AI agent
+                var outputsJson = FormatOutputs(result.Outputs);
+                return new CallToolResult
                 {
-                    new TextContentBlock { Text = outputText }
-                },
-                IsError = !result.Ok
-            };
+                    Content = new List<ContentBlock>
+                    {
+                        new TextContentBlock { Text = outputsJson }
+                    },
+                    IsError = false
+                };
+            }
+            else
+            {
+                return new CallToolResult
+                {
+                    Content = new List<ContentBlock>
+                    {
+                        new TextContentBlock { Text = $"Error: {result.Message}" }
+                    },
+                    IsError = true
+                };
+            }
         }
 
         /// <summary>
-        /// Executes a NetInteractor XML script for web automation.
-        /// 
-        /// The script defines a workflow with actions like:
-        /// - get: Fetch a URL and extract data using XPath
-        /// - post: Submit forms with field values
-        /// - if: Conditional execution based on input values
-        /// - call: Call another named target
-        /// 
-        /// See the class documentation for full script syntax and examples.
+        /// Internal method for testing - executes a script and returns the result.
         /// </summary>
-        /// <param name="script">The XML script defining the web interaction workflow.</param>
-        /// <param name="inputs">Optional comma-separated key=value pairs for script inputs (e.g., "BaseUrl=https://example.com,Username=user").</param>
-        /// <param name="target">Optional target name to execute. If not specified, the default target will be used.</param>
-        /// <returns>The InteractionResult containing Ok status, Message, and extracted Outputs.</returns>
-        public async Task<InteractionResult> ExecuteScriptAsync(
+        internal async Task<InteractionResult> ExecuteScriptInternalAsync(
             string script,
             string? inputs = null,
             string? target = null)
@@ -264,56 +268,7 @@ namespace NetInteractor.Mcp
             }
         }
 
-        /// <summary>
-        /// Gets the input metadata for the ExecuteScript tool.
-        /// </summary>
-        /// <returns>A dictionary describing the input parameters.</returns>
-        public static Dictionary<string, ToolParameterMetadata> GetInputMetadata()
-        {
-            return new Dictionary<string, ToolParameterMetadata>
-            {
-                ["script"] = new ToolParameterMetadata
-                {
-                    Name = "script",
-                    Description = @"XML script defining the web automation workflow. Structure:
-<InteractConfig defaultTarget='TargetName'>
-    <target name='TargetName'>
-        <!-- Actions: get, post, if, call -->
-    </target>
-</InteractConfig>
-
-Actions:
-- <get url='...'><output name='...' xpath='...' attr='text()'/></get>
-- <post formIndex='0'><formValue name='...' value='...'/></post>
-- <if property='$(Var)' value='...'><call target='...'/></if>
-- <call target='TargetName'/>
-
-Variables: Use $(InputName) syntax for input substitution.",
-                    Type = "string",
-                    Required = true
-                },
-                ["inputs"] = new ToolParameterMetadata
-                {
-                    Name = "inputs",
-                    Description = "Comma-separated key=value pairs for script variable substitution. Example: 'BaseUrl=https://example.com,Username=admin,Password=secret'. These values replace $(Key) placeholders in the script.",
-                    Type = "string",
-                    Required = false
-                },
-                ["target"] = new ToolParameterMetadata
-                {
-                    Name = "target",
-                    Description = "Name of the target to execute. If omitted, uses the defaultTarget specified in InteractConfig. Targets are named workflow steps that can call each other.",
-                    Type = "string",
-                    Required = false
-                }
-            };
-        }
-
-        /// <summary>
-        /// Gets the output metadata for the ExecuteScript tool.
-        /// </summary>
-        /// <returns>A dictionary describing the output properties of InteractionResult.</returns>
-        public static Dictionary<string, ToolParameterMetadata> GetOutputMetadata()
+        private static Dictionary<string, ToolParameterMetadata> GetOutputMetadata()
         {
             return new Dictionary<string, ToolParameterMetadata>
             {

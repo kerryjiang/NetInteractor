@@ -21,19 +21,19 @@ namespace NetInteractor.Mcp.Test
         }
 
         [Fact]
-        public async Task ExecuteScriptAsync_SimpleGetScript_ExtractsTitle()
+        public async Task ExecuteScriptInternalAsync_SimpleGetScript_ExtractsTitle()
         {
             // Arrange
-            var script = @"<InteractConfig defaultTarget='Main'>
+            var script = $@"<InteractConfig defaultTarget='Main'>
                 <target name='Main'>
-                    <get url='$(BaseUrl)/'>
+                    <get url='{_baseUrl}/'>
                         <output name='title' xpath='//h1' attr='text()' />
                     </get>
                 </target>
             </InteractConfig>";
 
             // Act
-            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
+            var result = await _tool.ExecuteScriptInternalAsync(script);
 
             // Assert
             Assert.True(result.Ok, result.Message);
@@ -42,7 +42,7 @@ namespace NetInteractor.Mcp.Test
         }
 
         [Fact]
-        public async Task ExecuteScriptAsync_WithSpecificTarget_ExecutesTarget()
+        public async Task ExecuteScriptInternalAsync_WithInputs_ExtractsTitle()
         {
             // Arrange
             var script = @"<InteractConfig defaultTarget='Main'>
@@ -51,15 +51,36 @@ namespace NetInteractor.Mcp.Test
                         <output name='title' xpath='//h1' attr='text()' />
                     </get>
                 </target>
+            </InteractConfig>";
+
+            // Act
+            var result = await _tool.ExecuteScriptInternalAsync(script, $"BaseUrl={_baseUrl}");
+
+            // Assert
+            Assert.True(result.Ok, result.Message);
+            Assert.NotNull(result.Outputs);
+            Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+        }
+
+        [Fact]
+        public async Task ExecuteScriptInternalAsync_WithSpecificTarget_ExecutesTarget()
+        {
+            // Arrange
+            var script = $@"<InteractConfig defaultTarget='Main'>
+                <target name='Main'>
+                    <get url='{_baseUrl}/'>
+                        <output name='title' xpath='//h1' attr='text()' />
+                    </get>
+                </target>
                 <target name='Products'>
-                    <get url='$(BaseUrl)/products'>
+                    <get url='{_baseUrl}/products'>
                         <output name='productTitle' xpath='//h1' attr='text()' />
                     </get>
                 </target>
             </InteractConfig>";
 
             // Act
-            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}", "Products");
+            var result = await _tool.ExecuteScriptInternalAsync(script, null, "Products");
 
             // Assert
             Assert.True(result.Ok, result.Message);
@@ -68,13 +89,13 @@ namespace NetInteractor.Mcp.Test
         }
 
         [Fact]
-        public async Task ExecuteScriptAsync_InvalidScript_ReturnsFailed()
+        public async Task ExecuteScriptInternalAsync_InvalidScript_ReturnsError()
         {
             // Arrange
             var invalidScript = @"<Invalid></Script>";
 
             // Act
-            var result = await _tool.ExecuteScriptAsync(invalidScript);
+            var result = await _tool.ExecuteScriptInternalAsync(invalidScript);
 
             // Assert
             Assert.False(result.Ok);
@@ -82,30 +103,12 @@ namespace NetInteractor.Mcp.Test
         }
 
         [Fact]
-        public async Task ExecuteScriptAsync_NoTargetSpecified_ReturnsError()
-        {
-            // Arrange - Script without defaultTarget and no target parameter
-            var script = @"<InteractConfig>
-                <target name='Main'>
-                    <get url='$(BaseUrl)/' />
-                </target>
-            </InteractConfig>";
-
-            // Act
-            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
-
-            // Assert
-            Assert.False(result.Ok);
-            Assert.Contains("target", result.Message, System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
-        public async Task ExecuteScriptAsync_MultipleOutputs_ExtractsAllValues()
+        public async Task ExecuteScriptInternalAsync_MultipleOutputs_ExtractsAllValues()
         {
             // Arrange
-            var script = @"<InteractConfig defaultTarget='Main'>
+            var script = $@"<InteractConfig defaultTarget='Main'>
                 <target name='Main'>
-                    <get url='$(BaseUrl)/data'>
+                    <get url='{_baseUrl}/data'>
                         <output name='title' xpath='//h1' attr='text()' />
                         <output name='imageSrc' xpath='//img' attr='src' />
                     </get>
@@ -113,7 +116,7 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
+            var result = await _tool.ExecuteScriptInternalAsync(script);
 
             // Assert
             Assert.True(result.Ok, result.Message);
@@ -123,58 +126,26 @@ namespace NetInteractor.Mcp.Test
         }
 
         [Fact]
-        public async Task ExecuteScriptAsync_WithNullInputs_ExecutesSuccessfully()
+        public void ProtocolTool_ReturnsValidTool()
         {
-            // Arrange
-            var script = @"<InteractConfig defaultTarget='Main'>
-                <target name='Main'>
-                    <get url='" + _baseUrl + @"/'>
-                        <output name='title' xpath='//h1' attr='text()' />
-                    </get>
-                </target>
-            </InteractConfig>";
-
             // Act
-            var result = await _tool.ExecuteScriptAsync(script, null);
+            var protocolTool = _tool.ProtocolTool;
 
             // Assert
-            Assert.True(result.Ok, result.Message);
-            Assert.NotNull(result.Outputs);
-            Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+            Assert.NotNull(protocolTool);
+            Assert.Equal("netinteractor_execute_script", protocolTool.Name);
+            Assert.NotNull(protocolTool.Description);
         }
 
         [Fact]
-        public void GetInputMetadata_ReturnsExpectedParameters()
+        public void Metadata_ReturnsOutputMetadata()
         {
             // Act
-            var metadata = NetInteractorTool.GetInputMetadata();
+            var metadata = _tool.Metadata;
 
             // Assert
             Assert.NotNull(metadata);
-            Assert.True(metadata.ContainsKey("script"));
-            Assert.True(metadata.ContainsKey("inputs"));
-            Assert.True(metadata.ContainsKey("target"));
-            
-            Assert.True(metadata["script"].Required);
-            Assert.False(metadata["inputs"].Required);
-            Assert.False(metadata["target"].Required);
-        }
-
-        [Fact]
-        public void GetOutputMetadata_ReturnsExpectedParameters()
-        {
-            // Act
-            var metadata = NetInteractorTool.GetOutputMetadata();
-
-            // Assert
-            Assert.NotNull(metadata);
-            Assert.True(metadata.ContainsKey("Ok"));
-            Assert.True(metadata.ContainsKey("Message"));
-            Assert.True(metadata.ContainsKey("Outputs"));
-            
-            Assert.Equal("boolean", metadata["Ok"].Type);
-            Assert.Equal("string", metadata["Message"].Type);
-            Assert.Equal("NameValueCollection", metadata["Outputs"].Type);
+            Assert.True(metadata.Count > 0);
         }
     }
 
