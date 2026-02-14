@@ -3,7 +3,6 @@ using System.Linq;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
 using NetInteractor.Config;
-using NetInteractor.WebAccessors;
 
 namespace NetInteractor
 {
@@ -47,14 +46,20 @@ namespace NetInteractor
             
             return lastResult;
         }
-        
-        public async Task<InteractionResult> ExecuteAsync(InteractConfig config, NameValueCollection inputs = null, string target = null)
+
+        public async Task<InteractionResult> ExecuteAsync(string script, NameValueCollection inputs = null, string target = null)
         {
-            var targets = config.Targets;
+            var scriptConfig = ConfigFactory.DeserializeXml<InteractConfig>(script);
+            return await ExecuteAsync(scriptConfig, inputs, target);
+        }
+
+        public async Task<InteractionResult> ExecuteAsync(InteractConfig scriptConfig, NameValueCollection inputs = null, string target = null)
+        {
+            var targets = scriptConfig.Targets;
 
             if (string.IsNullOrEmpty(target))
             {
-                target = config.DefaultTarget;
+                target = scriptConfig.DefaultTarget;
             }
 
             if (string.IsNullOrEmpty(target))
