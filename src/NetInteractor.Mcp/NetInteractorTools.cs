@@ -119,7 +119,6 @@ namespace NetInteractor.Mcp
     {
         private readonly IWebAccessor _webAccessor;
         private readonly Tool _protocolTool;
-        private readonly IReadOnlyList<object> _outputMetadata;
 
         /// <summary>
         /// Initializes a new instance of the NetInteractorTool class with the default PlaywrightWebAccessor.
@@ -137,17 +136,14 @@ namespace NetInteractor.Mcp
         {
             _webAccessor = webAccessor ?? throw new ArgumentNullException(nameof(webAccessor));
 
-            // Define the protocol tool representation using GetInputMetadata
-            var inputSchemaJson = GetInputMetadata();
+            // Define the protocol tool representation using GetInputMetadata and GetOutputMetadata
             _protocolTool = new Tool
             {
                 Name = "netinteractor_execute_script",
                 Description = "Executes a NetInteractor XML script for web automation. Supports GET requests, form POST submissions, conditional logic (if), and calling other targets. Use XPath expressions to extract data from HTML. Variables use $(Name) syntax.",
-                InputSchema = JsonDocument.Parse(inputSchemaJson).RootElement
+                InputSchema = GetInputMetadata(),
+                OutputSchema = GetOutputMetadata()
             };
-
-            // Build output metadata
-            _outputMetadata = new List<object>(GetOutputMetadata().Values);
         }
 
         /// <summary>
@@ -156,9 +152,9 @@ namespace NetInteractor.Mcp
         public override Tool ProtocolTool => _protocolTool;
 
         /// <summary>
-        /// Gets the tool metadata including output schema information.
+        /// Gets the tool metadata - returns empty list as output metadata is returned via OutputSchema.
         /// </summary>
-        public override IReadOnlyList<object> Metadata => _outputMetadata;
+        public override IReadOnlyList<object> Metadata => Array.Empty<object>();
 
         /// <summary>
         /// Invokes the tool with the given parameters.
@@ -170,25 +166,16 @@ namespace NetInteractor.Mcp
             var arguments = request.Params?.Arguments;
 
             string? script = null;
-            string[]? inputs = null;
+            NameValueCollection? inputs = null;
             string? target = null;
 
             if (arguments != null)
             {
                 if (arguments.TryGetValue("script", out var scriptValue) && scriptValue.ValueKind != JsonValueKind.Undefined && scriptValue.ValueKind != JsonValueKind.Null)
                     script = scriptValue.GetString();
-                if (arguments.TryGetValue("inputs", out var inputsValue) && inputsValue.ValueKind == JsonValueKind.Array)
+                if (arguments.TryGetValue("inputs", out var inputsValue) && inputsValue.ValueKind == JsonValueKind.Object)
                 {
-                    var inputList = new List<string>();
-                    foreach (var item in inputsValue.EnumerateArray())
-                    {
-                        if (item.ValueKind == JsonValueKind.String)
-                        {
-                            var val = item.GetString();
-                            if (val != null) inputList.Add(val);
-                        }
-                    }
-                    inputs = inputList.ToArray();
+                    inputs = ParseInputsFromJsonElement(inputsValue);
                 }
                 if (arguments.TryGetValue("target", out var targetValue) && targetValue.ValueKind != JsonValueKind.Undefined && targetValue.ValueKind != JsonValueKind.Null)
                     target = targetValue.GetString();
@@ -236,13 +223,13 @@ namespace NetInteractor.Mcp
         /// </summary>
         internal async Task<InteractionResult> ExecuteScriptInternalAsync(
             string script,
-            string[]? inputs = null,
+            NameValueCollection? inputs = null,
             string? target = null)
         {
             try
             {
                 var executor = new InterationExecutor(_webAccessor);
-                var inputValues = ParseInputs(inputs);
+                var inputValues = inputs ?? new NameValueCollection();
                 return await executor.ExecuteAsync(script, inputValues, target);
             }
             catch (Exception ex)
@@ -257,24 +244,24 @@ namespace NetInteractor.Mcp
         }
 
         /// <summary>
-        /// Gets the input metadata schema as JSON string.
+        /// Gets the input metadata schema as JsonElement.
         /// </summary>
-        private static string GetInputMetadata()
+        private static JsonElement GetInputMetadata()
         {
-            return """
+            var schemaJson = """
             {
                 "type": "object",
                 "properties": {
                     "script": {
                         "type": "string",
-                        "description": "XML script defining the web automation workflow.\n\nStructure:\n<InteractConfig defaultTarget='TargetName'>\n    <target name='TargetName'>\n        <!-- Actions: get, post, if, call -->\n    </target>\n</InteractConfig>\n\nSupported Actions:\n\n1. GET Request - Fetches a web page and extracts data:\n   <get url='https://example.com'>\n       <output name='title' xpath='//h1' attr='text()' />\n       <output name='link' xpath='//a' attr='href' />\n   </get>\n\n2. POST Form Submission - Submits form data:\n   <post formIndex='0'>\n       <formValue name='username' value='$(Username)' />\n       <formValue name='password' value='$(Password)' />\n       <output name='result' xpath='//div[@class=\"message\"]' attr='text()' />\n   </post>\n\n3. Conditional Execution:\n   <if property='$(ShouldLogin)' value='true'>\n       <call target='Login' />\n   </if>\n\n4. Call Another Target:\n   <call target='TargetName' />\n\nOutput Extraction Attributes:\n- name: Output variable name\n- xpath: XPath selector\n- attr: Attribute to extract ('text()' for inner text, or attribute name like 'href')\n- regex: Optional regex pattern\n- isMultipleValue: Extract all matching values\n- expectedValue: Validate extracted value\n\nVariables: Use $(InputName) syntax for substitution."
+                        "description": "XML script defining the web automation workflow.\n\n## Script Structure\n\n<InteractConfig defaultTarget='TargetName'>\n    <target name='TargetName'>\n        <!-- Action elements go here -->\n    </target>\n    <target name='AnotherTarget'>\n        <!-- Additional targets -->\n    </target>\n</InteractConfig>\n\n## Target Element\n\nTargets are named workflow steps. The 'defaultTarget' attribute specifies which target runs first.\nTargets can call other targets using the <call> action for modular workflows.\n\n## Supported Action Types\n\n### 1. GET Request (<get>)\nFetches a web page via HTTP GET and optionally extracts data.\n\nAttributes:\n- url (required): URL to fetch. Supports $(Variable) substitution.\n- expectedHttpStatusCodes: Comma-separated valid status codes (default: 200).\n\nChild Elements:\n- <output>: Extract data from the response (see Output Extraction).\n\nExample:\n<get url='$(BaseUrl)/products'>\n    <output name='pageTitle' xpath='//h1' attr='text()' />\n    <output name='productCount' xpath='//div[@class=\"product\"]' attr='text()' isMultipleValue='true' />\n</get>\n\n### 2. POST Form Submission (<post>)\nSubmits an HTML form. Must be preceded by a GET to load the page with the form.\n\nAttributes (use ONE to identify the form):\n- formIndex: Zero-based index of form on page (e.g., formIndex='0' for first form).\n- formName: The 'name' attribute of the form element.\n- action: The 'action' attribute/URL of the form.\n- clientID: The 'id' attribute of the form element.\n\nChild Elements:\n- <formValue>: Set form field values.\n  - name (required): Form field name.\n  - value (required): Value to set. Supports $(Variable) substitution.\n- <output>: Extract data from the response after submission.\n\nExample:\n<post formIndex='0'>\n    <formValue name='username' value='$(Username)' />\n    <formValue name='password' value='$(Password)' />\n    <output name='loginResult' xpath='//div[@class=\"message\"]' attr='text()' />\n</post>\n\n### 3. Conditional Execution (<if>)\nExecutes child action only when a condition is met.\n\nAttributes:\n- property (required): Input variable to check. Use $(VariableName) syntax.\n- value (required): Expected value to match.\n\nChild Elements: Any single action element (get, post, call, if).\n\nExample:\n<if property='$(NeedsAuth)' value='true'>\n    <call target='LoginWorkflow' />\n</if>\n\n### 4. Call Another Target (<call>)\nExecutes another named target, enabling modular workflows.\n\nAttributes:\n- target (required): Name of the target to execute.\n\nExample:\n<call target='ExtractProductDetails' />\n\n## Output Extraction (<output>)\n\nExtracts data from HTML responses using XPath.\n\nAttributes:\n- name (required): Variable name for extracted value.\n- xpath (required): XPath expression to select element(s).\n- attr (required): What to extract:\n  - 'text()': Inner text content.\n  - Any attribute name: e.g., 'href', 'src', 'class'.\n- regex: Optional regex to further extract from the selected content.\n- isMultipleValue: Set 'true' to extract all matching elements as comma-separated values.\n- expectedValue: Validation - fails if extracted value doesn't match.\n\nExamples:\n<output name='title' xpath='//h1' attr='text()' />\n<output name='imageUrl' xpath='//img[@id=\"main\"]' attr='src' />\n<output name='price' xpath='//span[@class=\"price\"]' attr='text()' regex='\\$([\\d.]+)' />\n<output name='links' xpath='//a[@class=\"item\"]' attr='href' isMultipleValue='true' />\n\n## Variable Substitution\n\nUse $(VariableName) syntax anywhere in attribute values. Variables are provided via the 'inputs' parameter as key-value pairs.\n\nExample:\n<get url='$(BaseUrl)/api/$(Endpoint)?id=$(ItemId)' />"
                     },
                     "inputs": {
-                        "type": "array",
-                        "items": {
+                        "type": "object",
+                        "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Array of key=value pairs for script variable substitution. Example: ['BaseUrl=https://example.com', 'Username=admin', 'Password=secret']. These values replace $(Key) placeholders in the script."
+                        "description": "Object with key-value string pairs for script variable substitution. Example: {\"BaseUrl\": \"https://example.com\", \"Username\": \"admin\", \"Password\": \"secret\"}. These values replace $(Key) placeholders in the script."
                     },
                     "target": {
                         "type": "string",
@@ -284,63 +271,57 @@ namespace NetInteractor.Mcp
                 "required": ["script"]
             }
             """;
+            return JsonDocument.Parse(schemaJson).RootElement;
         }
 
-        private static Dictionary<string, ToolParameterMetadata> GetOutputMetadata()
+        /// <summary>
+        /// Gets the output metadata schema as JsonElement.
+        /// </summary>
+        private static JsonElement GetOutputMetadata()
         {
-            return new Dictionary<string, ToolParameterMetadata>
+            var schemaJson = """
             {
-                ["Ok"] = new ToolParameterMetadata
-                {
-                    Name = "Ok",
-                    Description = "True if the script execution completed successfully, false if any action failed",
-                    Type = "boolean",
-                    Required = true
+                "type": "object",
+                "properties": {
+                    "Ok": {
+                        "type": "boolean",
+                        "description": "True if the script execution completed successfully, false if any action failed"
+                    },
+                    "Message": {
+                        "type": "string",
+                        "description": "Descriptive message about the result, especially useful for errors"
+                    },
+                    "Outputs": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Object containing all extracted output values defined by <output> elements in the script. Keys are output names, values are extracted strings."
+                    },
+                    "Target": {
+                        "type": "string",
+                        "description": "The name of the next target to execute (used for workflow chaining)"
+                    }
                 },
-                ["Message"] = new ToolParameterMetadata
-                {
-                    Name = "Message",
-                    Description = "Descriptive message about the result, especially useful for errors",
-                    Type = "string",
-                    Required = false
-                },
-                ["Outputs"] = new ToolParameterMetadata
-                {
-                    Name = "Outputs",
-                    Description = "NameValueCollection containing all extracted output values defined by <output> elements in the script",
-                    Type = "NameValueCollection",
-                    Required = false
-                },
-                ["Target"] = new ToolParameterMetadata
-                {
-                    Name = "Target",
-                    Description = "The name of the next target to execute (used for workflow chaining)",
-                    Type = "string",
-                    Required = false
-                },
-                ["Exception"] = new ToolParameterMetadata
-                {
-                    Name = "Exception",
-                    Description = "Exception details if an error occurred during execution",
-                    Type = "Exception",
-                    Required = false
-                }
-            };
+                "required": ["Ok"]
+            }
+            """;
+            return JsonDocument.Parse(schemaJson).RootElement;
         }
 
-        private static NameValueCollection ParseInputs(string[]? inputs)
+        private static NameValueCollection ParseInputsFromJsonElement(JsonElement inputsElement)
         {
             var result = new NameValueCollection();
             
-            if (inputs == null || inputs.Length == 0)
-                return result;
-
-            foreach (var pair in inputs)
+            foreach (var property in inputsElement.EnumerateObject())
             {
-                var keyValue = pair.Split(['='], 2);
-                if (keyValue.Length == 2)
+                if (property.Value.ValueKind == JsonValueKind.String)
                 {
-                    result[keyValue[0].Trim()] = keyValue[1].Trim();
+                    result[property.Name] = property.Value.GetString() ?? string.Empty;
+                }
+                else
+                {
+                    result[property.Name] = property.Value.ToString();
                 }
             }
             
@@ -362,31 +343,5 @@ namespace NetInteractor.Mcp
             }
             return jsonObject;
         }
-    }
-
-    /// <summary>
-    /// Metadata describing a tool parameter (input or output).
-    /// </summary>
-    public class ToolParameterMetadata
-    {
-        /// <summary>
-        /// The name of the parameter.
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-
-        /// <summary>
-        /// A description of the parameter.
-        /// </summary>
-        public string Description { get; set; } = string.Empty;
-
-        /// <summary>
-        /// The type of the parameter (e.g., "string", "boolean", "object").
-        /// </summary>
-        public string Type { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Indicates whether the parameter is required.
-        /// </summary>
-        public bool Required { get; set; }
     }
 }

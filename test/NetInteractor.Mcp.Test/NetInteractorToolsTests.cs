@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Threading.Tasks;
 using NetInteractor.Mcp;
 using NetInteractor.Test.TestWebApp;
@@ -53,8 +54,10 @@ namespace NetInteractor.Mcp.Test
                 </target>
             </InteractConfig>";
 
+            var inputs = new NameValueCollection { { "BaseUrl", _baseUrl } };
+
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(script, new[] { $"BaseUrl={_baseUrl}" });
+            var result = await _tool.ExecuteScriptInternalAsync(script, inputs);
 
             // Assert
             Assert.True(result.Ok, result.Message);
@@ -135,17 +138,18 @@ namespace NetInteractor.Mcp.Test
             Assert.NotNull(protocolTool);
             Assert.Equal("netinteractor_execute_script", protocolTool.Name);
             Assert.NotNull(protocolTool.Description);
+            Assert.NotNull(protocolTool.OutputSchema);
         }
 
         [Fact]
-        public void Metadata_ReturnsOutputMetadata()
+        public void Metadata_ReturnsEmptyList()
         {
             // Act
             var metadata = _tool.Metadata;
 
-            // Assert
+            // Assert - Metadata returns empty list, output schema is on ProtocolTool.OutputSchema
             Assert.NotNull(metadata);
-            Assert.True(metadata.Count > 0);
+            Assert.Empty(metadata);
         }
     }
 
