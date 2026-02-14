@@ -5,95 +5,17 @@ using Xunit;
 
 namespace NetInteractor.Mcp.Test
 {
-    public class NetInteractorToolsTests : IClassFixture<TestWebApplicationFixture>
+    public class NetInteractorToolTests : IClassFixture<TestWebApplicationFixture>
     {
         private readonly TestWebApplicationFactory _factory;
         private readonly string _baseUrl;
+        private readonly NetInteractorTool _tool;
 
-        public NetInteractorToolsTests(TestWebApplicationFixture fixture)
+        public NetInteractorToolTests(TestWebApplicationFixture fixture)
         {
             _factory = fixture.Factory;
             _baseUrl = fixture.Factory.ServerUrl;
-        }
-
-        [Fact]
-        public async Task GetAsync_SimpleRequest_ReturnsHtml()
-        {
-            // Act
-            var result = await NetInteractorTools.GetAsync($"{_baseUrl}/");
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.Equal(200, result.StatusCode);
-            Assert.NotNull(result.Html);
-            Assert.Contains("Welcome to Test Shop", result.Html);
-        }
-
-        [Fact]
-        public async Task GetAsync_WithXPath_ExtractsTitle()
-        {
-            // Act
-            var result = await NetInteractorTools.GetAsync($"{_baseUrl}/", "//h1", "text()");
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.Equal(200, result.StatusCode);
-            Assert.Equal("Welcome to Test Shop", result.ExtractedValue);
-            Assert.Null(result.Html);
-        }
-
-        [Fact]
-        public async Task GetAsync_WithXPath_ExtractsAttribute()
-        {
-            // Act
-            var result = await NetInteractorTools.GetAsync($"{_baseUrl}/data", "//img", "src");
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.Equal(200, result.StatusCode);
-            Assert.Equal("/images/test.png", result.ExtractedValue);
-        }
-
-        [Fact]
-        public async Task GetAsync_InvalidUrl_ReturnsFailed()
-        {
-            // Act
-            var result = await NetInteractorTools.GetAsync("http://invalid-nonexistent-domain-123456789.com/");
-
-            // Assert
-            Assert.False(result.Success);
-            Assert.NotNull(result.Message);
-        }
-
-        [Fact]
-        public async Task PostAsync_SimplePost_ReturnsSuccess()
-        {
-            // Arrange
-            var formData = "billing_name=Test User,email=test@example.com,billing_address=123 Main St,billing_city=Seattle,billing_state=WA,billing_zip=98101,billing_country=USA,credit_card_number=4111111111111111,credit_card_month=12,credit_card_year=2027";
-
-            // Act
-            var result = await NetInteractorTools.PostAsync($"{_baseUrl}/checkout/submit", formData);
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.Equal(200, result.StatusCode);
-            Assert.NotNull(result.Html);
-            Assert.Contains("Test User", result.Html);
-        }
-
-        [Fact]
-        public async Task PostAsync_WithXPath_ExtractsValue()
-        {
-            // Arrange
-            var formData = "billing_name=Jane Doe,email=jane@example.com,billing_address=456 Oak St,billing_city=Portland,billing_state=OR,billing_zip=97201,billing_country=USA,credit_card_number=4111111111111111,credit_card_month=12,credit_card_year=2027";
-
-            // Act
-            var result = await NetInteractorTools.PostAsync($"{_baseUrl}/checkout/submit", formData, "//span[@class='customer-name']", "text()");
-
-            // Assert
-            Assert.True(result.Success);
-            Assert.Equal(200, result.StatusCode);
-            Assert.Equal("Jane Doe", result.ExtractedValue);
+            _tool = new NetInteractorTool();
         }
 
         [Fact]
@@ -109,7 +31,7 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await NetInteractorTools.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
+            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
 
             // Assert
             Assert.True(result.Success, result.Message);
@@ -135,7 +57,7 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await NetInteractorTools.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}", "Products");
+            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}", "Products");
 
             // Assert
             Assert.True(result.Success, result.Message);
@@ -150,7 +72,7 @@ namespace NetInteractor.Mcp.Test
             var invalidScript = @"<Invalid></Script>";
 
             // Act
-            var result = await NetInteractorTools.ExecuteScriptAsync(invalidScript);
+            var result = await _tool.ExecuteScriptAsync(invalidScript);
 
             // Assert
             Assert.False(result.Success);
@@ -168,7 +90,7 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await NetInteractorTools.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
+            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
 
             // Assert
             Assert.False(result.Success);
@@ -189,7 +111,7 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await NetInteractorTools.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
+            var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
 
             // Assert
             Assert.True(result.Success, result.Message);
@@ -211,12 +133,46 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await NetInteractorTools.ExecuteScriptAsync(script, null);
+            var result = await _tool.ExecuteScriptAsync(script, null);
 
             // Assert
             Assert.True(result.Success, result.Message);
             Assert.NotNull(result.Outputs);
             Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+        }
+
+        [Fact]
+        public void GetInputMetadata_ReturnsExpectedParameters()
+        {
+            // Act
+            var metadata = NetInteractorTool.GetInputMetadata();
+
+            // Assert
+            Assert.NotNull(metadata);
+            Assert.True(metadata.ContainsKey("script"));
+            Assert.True(metadata.ContainsKey("inputs"));
+            Assert.True(metadata.ContainsKey("target"));
+            
+            Assert.True(metadata["script"].Required);
+            Assert.False(metadata["inputs"].Required);
+            Assert.False(metadata["target"].Required);
+        }
+
+        [Fact]
+        public void GetOutputMetadata_ReturnsExpectedParameters()
+        {
+            // Act
+            var metadata = NetInteractorTool.GetOutputMetadata();
+
+            // Assert
+            Assert.NotNull(metadata);
+            Assert.True(metadata.ContainsKey("Success"));
+            Assert.True(metadata.ContainsKey("Message"));
+            Assert.True(metadata.ContainsKey("Outputs"));
+            
+            Assert.Equal("boolean", metadata["Success"].Type);
+            Assert.Equal("string", metadata["Message"].Type);
+            Assert.Equal("object", metadata["Outputs"].Type);
         }
     }
 

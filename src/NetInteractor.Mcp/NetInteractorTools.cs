@@ -1,20 +1,38 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using ModelContextProtocol.Server;
-using NetInteractor.Config;
 using NetInteractor.WebAccessors;
 
 namespace NetInteractor.Mcp
 {
     /// <summary>
-    /// MCP Server Tools for NetInteractor web automation.
-    /// These tools enable AI agents to execute web interactions and automation scripts.
+    /// MCP Server Tool for NetInteractor web automation.
+    /// This tool enables AI agents to execute web interactions and automation scripts using InteractExecutor.
     /// </summary>
-    [McpServerToolType]
-    public static class NetInteractorTools
+    public class NetInteractorTool
     {
+        private readonly IWebAccessor _webAccessor;
+
+        /// <summary>
+        /// Initializes a new instance of the NetInteractorTool class with the default HttpClientWebAccessor.
+        /// </summary>
+        public NetInteractorTool()
+            : this(new HttpClientWebAccessor())
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the NetInteractorTool class with a custom web accessor.
+        /// </summary>
+        /// <param name="webAccessor">The web accessor to use for HTTP requests.</param>
+        public NetInteractorTool(IWebAccessor webAccessor)
+        {
+            _webAccessor = webAccessor ?? throw new ArgumentNullException(nameof(webAccessor));
+        }
+
         /// <summary>
         /// Executes a NetInteractor XML script for web automation.
         /// </summary>
@@ -31,15 +49,14 @@ namespace NetInteractor.Mcp
         /// <returns>The execution result containing outputs and status.</returns>
         [McpServerTool(Name = "netinteractor_execute_script")]
         [Description("Executes a NetInteractor XML script for web automation. Use this to run complex multi-step web workflows including GET requests, form submissions, data extraction, and conditional logic.")]
-        public static async Task<ExecuteScriptResult> ExecuteScriptAsync(
+        public async Task<ExecuteScriptResult> ExecuteScriptAsync(
             string script,
             string? inputs = null,
             string? target = null)
         {
             try
             {
-                var webAccessor = new HttpClientWebAccessor();
-                var executor = new InterationExecutor(webAccessor);
+                var executor = new InterationExecutor(_webAccessor);
                 
                 var inputValues = ParseInputs(inputs);
                 var result = await executor.ExecuteAsync(script, inputValues, target);
@@ -62,106 +79,67 @@ namespace NetInteractor.Mcp
         }
 
         /// <summary>
-        /// Performs an HTTP GET request and extracts data using XPath.
+        /// Gets the input metadata for the ExecuteScript tool.
         /// </summary>
-        /// <param name="url">The URL to fetch.</param>
-        /// <param name="xpath">Optional XPath expression to extract content from the HTML.</param>
-        /// <param name="attribute">Optional attribute to extract from the XPath result (e.g., 'href', 'src'). Use 'text()' for text content.</param>
-        /// <returns>The result containing the extracted content or raw HTML.</returns>
-        [McpServerTool(Name = "netinteractor_get")]
-        [Description("Performs an HTTP GET request and optionally extracts data using XPath. Use this for simple web scraping and data extraction from web pages.")]
-        public static async Task<GetRequestResult> GetAsync(
-            string url,
-            string? xpath = null,
-            string? attribute = null)
+        /// <returns>A dictionary describing the input parameters.</returns>
+        public static Dictionary<string, ToolParameterMetadata> GetInputMetadata()
         {
-            try
+            return new Dictionary<string, ToolParameterMetadata>
             {
-                var webAccessor = new HttpClientWebAccessor();
-                var response = await webAccessor.GetAsync(url);
-
-                var result = new GetRequestResult
+                ["script"] = new ToolParameterMetadata
                 {
-                    Success = response.StatusCode >= 200 && response.StatusCode < 300,
-                    StatusCode = response.StatusCode,
-                    Url = response.Url
-                };
-
-                if (!string.IsNullOrEmpty(xpath))
+                    Name = "script",
+                    Description = "The XML script defining the web interaction workflow",
+                    Type = "string",
+                    Required = true
+                },
+                ["inputs"] = new ToolParameterMetadata
                 {
-                    var pageInfo = new PageInfo(response.Url ?? url, response.Html ?? string.Empty);
-                    var extractedValue = ExtractValue(pageInfo, xpath, attribute);
-                    result.ExtractedValue = extractedValue;
+                    Name = "inputs",
+                    Description = "Optional comma-separated key=value pairs for script inputs (e.g., 'BaseUrl=https://example.com,Username=user')",
+                    Type = "string",
+                    Required = false
+                },
+                ["target"] = new ToolParameterMetadata
+                {
+                    Name = "target",
+                    Description = "Optional target name to execute. If not specified, the default target will be used",
+                    Type = "string",
+                    Required = false
                 }
-                else
-                {
-                    result.Html = response.Html;
-                }
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return new GetRequestResult
-                {
-                    Success = false,
-                    StatusCode = 0,
-                    Message = $"GET request failed: {ex.Message}"
-                };
-            }
+            };
         }
 
         /// <summary>
-        /// Performs an HTTP POST request with form data.
+        /// Gets the output metadata for the ExecuteScript tool.
         /// </summary>
-        /// <param name="url">The URL to post to.</param>
-        /// <param name="formData">Comma-separated key=value pairs for form data (e.g., "name=John,email=john@example.com").</param>
-        /// <param name="xpath">Optional XPath expression to extract content from the response HTML.</param>
-        /// <param name="attribute">Optional attribute to extract from the XPath result.</param>
-        /// <returns>The result containing the extracted content or raw HTML.</returns>
-        [McpServerTool(Name = "netinteractor_post")]
-        [Description("Performs an HTTP POST request with form data and optionally extracts data from the response using XPath. Use this for submitting forms and processing responses.")]
-        public static async Task<PostRequestResult> PostAsync(
-            string url,
-            string formData,
-            string? xpath = null,
-            string? attribute = null)
+        /// <returns>A dictionary describing the output properties.</returns>
+        public static Dictionary<string, ToolParameterMetadata> GetOutputMetadata()
         {
-            try
+            return new Dictionary<string, ToolParameterMetadata>
             {
-                var webAccessor = new HttpClientWebAccessor();
-                var formValues = ParseInputs(formData);
-                var response = await webAccessor.PostAsync(url, formValues);
-
-                var result = new PostRequestResult
+                ["Success"] = new ToolParameterMetadata
                 {
-                    Success = response.StatusCode >= 200 && response.StatusCode < 300,
-                    StatusCode = response.StatusCode,
-                    Url = response.Url
-                };
-
-                if (!string.IsNullOrEmpty(xpath))
+                    Name = "Success",
+                    Description = "Indicates whether the script execution was successful",
+                    Type = "boolean",
+                    Required = true
+                },
+                ["Message"] = new ToolParameterMetadata
                 {
-                    var pageInfo = new PageInfo(response.Url ?? url, response.Html ?? string.Empty);
-                    var extractedValue = ExtractValue(pageInfo, xpath, attribute);
-                    result.ExtractedValue = extractedValue;
+                    Name = "Message",
+                    Description = "Message describing the result or error",
+                    Type = "string",
+                    Required = false
+                },
+                ["Outputs"] = new ToolParameterMetadata
+                {
+                    Name = "Outputs",
+                    Description = "Extracted output values from the script execution as key-value pairs",
+                    Type = "object",
+                    Required = false
                 }
-                else
-                {
-                    result.Html = response.Html;
-                }
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return new PostRequestResult
-                {
-                    Success = false,
-                    StatusCode = 0,
-                    Message = $"POST request failed: {ex.Message}"
-                };
-            }
+            };
         }
 
         private static NameValueCollection ParseInputs(string? inputs)
@@ -184,27 +162,12 @@ namespace NetInteractor.Mcp
             return result;
         }
 
-        private static string? ExtractValue(PageInfo pageInfo, string xpath, string? attribute)
-        {
-            var node = pageInfo.Document.DocumentNode.SelectSingleNode(xpath);
-            
-            if (node == null)
-                return null;
-
-            if (string.IsNullOrEmpty(attribute) || attribute.Equals("text()", StringComparison.OrdinalIgnoreCase))
-            {
-                return node.InnerText?.Trim();
-            }
-
-            return node.GetAttributeValue(attribute, string.Empty) is { Length: > 0 } value ? value : null;
-        }
-
-        private static System.Collections.Generic.Dictionary<string, string>? ConvertOutputs(NameValueCollection outputs)
+        private static Dictionary<string, string>? ConvertOutputs(NameValueCollection outputs)
         {
             if (outputs == null || outputs.Count == 0)
                 return null;
 
-            var dict = new System.Collections.Generic.Dictionary<string, string>();
+            var dict = new Dictionary<string, string>();
             foreach (string? key in outputs.AllKeys)
             {
                 if (key != null)
@@ -214,5 +177,31 @@ namespace NetInteractor.Mcp
             }
             return dict;
         }
+    }
+
+    /// <summary>
+    /// Metadata describing a tool parameter (input or output).
+    /// </summary>
+    public class ToolParameterMetadata
+    {
+        /// <summary>
+        /// The name of the parameter.
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// A description of the parameter.
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The type of the parameter (e.g., "string", "boolean", "object").
+        /// </summary>
+        public string Type { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Indicates whether the parameter is required.
+        /// </summary>
+        public bool Required { get; set; }
     }
 }
