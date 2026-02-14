@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using NetInteractor.Mcp;
 using NetInteractor.Test.TestWebApp;
+using NetInteractor.WebAccessors;
 using Xunit;
 
 namespace NetInteractor.Mcp.Test
@@ -15,7 +16,8 @@ namespace NetInteractor.Mcp.Test
         {
             _factory = fixture.Factory;
             _baseUrl = fixture.Factory.ServerUrl;
-            _tool = new NetInteractorTool();
+            // Use HttpClientWebAccessor for tests since Playwright requires browser installation
+            _tool = new NetInteractorTool(new HttpClientWebAccessor());
         }
 
         [Fact]
@@ -34,7 +36,7 @@ namespace NetInteractor.Mcp.Test
             var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
 
             // Assert
-            Assert.True(result.Success, result.Message);
+            Assert.True(result.Ok, result.Message);
             Assert.NotNull(result.Outputs);
             Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
         }
@@ -60,7 +62,7 @@ namespace NetInteractor.Mcp.Test
             var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}", "Products");
 
             // Assert
-            Assert.True(result.Success, result.Message);
+            Assert.True(result.Ok, result.Message);
             Assert.NotNull(result.Outputs);
             Assert.Equal("Products", result.Outputs["productTitle"]);
         }
@@ -75,7 +77,7 @@ namespace NetInteractor.Mcp.Test
             var result = await _tool.ExecuteScriptAsync(invalidScript);
 
             // Assert
-            Assert.False(result.Success);
+            Assert.False(result.Ok);
             Assert.NotNull(result.Message);
         }
 
@@ -93,7 +95,7 @@ namespace NetInteractor.Mcp.Test
             var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
 
             // Assert
-            Assert.False(result.Success);
+            Assert.False(result.Ok);
             Assert.Contains("target", result.Message, System.StringComparison.OrdinalIgnoreCase);
         }
 
@@ -114,7 +116,7 @@ namespace NetInteractor.Mcp.Test
             var result = await _tool.ExecuteScriptAsync(script, $"BaseUrl={_baseUrl}");
 
             // Assert
-            Assert.True(result.Success, result.Message);
+            Assert.True(result.Ok, result.Message);
             Assert.NotNull(result.Outputs);
             Assert.Equal("Data Extraction Test", result.Outputs["title"]);
             Assert.Equal("/images/test.png", result.Outputs["imageSrc"]);
@@ -136,7 +138,7 @@ namespace NetInteractor.Mcp.Test
             var result = await _tool.ExecuteScriptAsync(script, null);
 
             // Assert
-            Assert.True(result.Success, result.Message);
+            Assert.True(result.Ok, result.Message);
             Assert.NotNull(result.Outputs);
             Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
         }
@@ -166,13 +168,13 @@ namespace NetInteractor.Mcp.Test
 
             // Assert
             Assert.NotNull(metadata);
-            Assert.True(metadata.ContainsKey("Success"));
+            Assert.True(metadata.ContainsKey("Ok"));
             Assert.True(metadata.ContainsKey("Message"));
             Assert.True(metadata.ContainsKey("Outputs"));
             
-            Assert.Equal("boolean", metadata["Success"].Type);
+            Assert.Equal("boolean", metadata["Ok"].Type);
             Assert.Equal("string", metadata["Message"].Type);
-            Assert.Equal("object", metadata["Outputs"].Type);
+            Assert.Equal("NameValueCollection", metadata["Outputs"].Type);
         }
     }
 

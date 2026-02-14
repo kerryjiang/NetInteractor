@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../NetInteractor/NetInteractor.csproj" />
+    <ProjectReference Include="../NetInteractor.Playwright/NetInteractor.Playwright.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
