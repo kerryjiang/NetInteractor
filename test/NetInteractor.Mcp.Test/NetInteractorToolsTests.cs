@@ -54,7 +54,7 @@ namespace NetInteractor.Mcp.Test
             </InteractConfig>";
 
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(script, $"BaseUrl={_baseUrl}");
+            var result = await _tool.ExecuteScriptInternalAsync(script, new[] { $"BaseUrl={_baseUrl}" });
 
             // Assert
             Assert.True(result.Ok, result.Message);

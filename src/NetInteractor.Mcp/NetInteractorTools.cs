@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using ModelContextProtocol.Protocol;
@@ -136,29 +137,8 @@ namespace NetInteractor.Mcp
         {
             _webAccessor = webAccessor ?? throw new ArgumentNullException(nameof(webAccessor));
 
-            // Define the input schema as JSON
-            var inputSchemaJson = """
-            {
-                "type": "object",
-                "properties": {
-                    "script": {
-                        "type": "string",
-                        "description": "XML script defining the web automation workflow. Structure:\n<InteractConfig defaultTarget='TargetName'>\n    <target name='TargetName'>\n        <!-- Actions: get, post, if, call -->\n    </target>\n</InteractConfig>\n\nActions:\n- <get url='...'><output name='...' xpath='...' attr='text()'/></get>\n- <post formIndex='0'><formValue name='...' value='...'/></post>\n- <if property='$(Var)' value='...'><call target='...'/></if>\n- <call target='TargetName'/>\n\nVariables: Use $(InputName) syntax for input substitution."
-                    },
-                    "inputs": {
-                        "type": "string",
-                        "description": "Comma-separated key=value pairs for script variable substitution. Example: 'BaseUrl=https://example.com,Username=admin,Password=secret'. These values replace $(Key) placeholders in the script."
-                    },
-                    "target": {
-                        "type": "string",
-                        "description": "Name of the target to execute. If omitted, uses the defaultTarget specified in InteractConfig."
-                    }
-                },
-                "required": ["script"]
-            }
-            """;
-
-            // Define the protocol tool representation
+            // Define the protocol tool representation using GetInputMetadata
+            var inputSchemaJson = GetInputMetadata();
             _protocolTool = new Tool
             {
                 Name = "netinteractor_execute_script",
@@ -190,15 +170,26 @@ namespace NetInteractor.Mcp
             var arguments = request.Params?.Arguments;
 
             string? script = null;
-            string? inputs = null;
+            string[]? inputs = null;
             string? target = null;
 
             if (arguments != null)
             {
                 if (arguments.TryGetValue("script", out var scriptValue) && scriptValue.ValueKind != JsonValueKind.Undefined && scriptValue.ValueKind != JsonValueKind.Null)
                     script = scriptValue.GetString();
-                if (arguments.TryGetValue("inputs", out var inputsValue) && inputsValue.ValueKind != JsonValueKind.Undefined && inputsValue.ValueKind != JsonValueKind.Null)
-                    inputs = inputsValue.GetString();
+                if (arguments.TryGetValue("inputs", out var inputsValue) && inputsValue.ValueKind == JsonValueKind.Array)
+                {
+                    var inputList = new List<string>();
+                    foreach (var item in inputsValue.EnumerateArray())
+                    {
+                        if (item.ValueKind == JsonValueKind.String)
+                        {
+                            var val = item.GetString();
+                            if (val != null) inputList.Add(val);
+                        }
+                    }
+                    inputs = inputList.ToArray();
+                }
                 if (arguments.TryGetValue("target", out var targetValue) && targetValue.ValueKind != JsonValueKind.Undefined && targetValue.ValueKind != JsonValueKind.Null)
                     target = targetValue.GetString();
             }
@@ -219,14 +210,11 @@ namespace NetInteractor.Mcp
 
             if (result.Ok)
             {
-                // Return the outputs directly as JSON for the AI agent
-                var outputsJson = FormatOutputs(result.Outputs);
+                // Return the outputs as structured content for the AI agent
+                var outputsObject = ConvertOutputsToJsonNode(result.Outputs);
                 return new CallToolResult
                 {
-                    Content = new List<ContentBlock>
-                    {
-                        new TextContentBlock { Text = outputsJson }
-                    },
+                    StructuredContent = outputsObject,
                     IsError = false
                 };
             }
@@ -248,7 +236,7 @@ namespace NetInteractor.Mcp
         /// </summary>
         internal async Task<InteractionResult> ExecuteScriptInternalAsync(
             string script,
-            string? inputs = null,
+            string[]? inputs = null,
             string? target = null)
         {
             try
@@ -266,6 +254,36 @@ namespace NetInteractor.Mcp
                     Exception = ex
                 };
             }
+        }
+
+        /// <summary>
+        /// Gets the input metadata schema as JSON string.
+        /// </summary>
+        private static string GetInputMetadata()
+        {
+            return """
+            {
+                "type": "object",
+                "properties": {
+                    "script": {
+                        "type": "string",
+                        "description": "XML script defining the web automation workflow.\n\nStructure:\n<InteractConfig defaultTarget='TargetName'>\n    <target name='TargetName'>\n        <!-- Actions: get, post, if, call -->\n    </target>\n</InteractConfig>\n\nSupported Actions:\n\n1. GET Request - Fetches a web page and extracts data:\n   <get url='https://example.com'>\n       <output name='title' xpath='//h1' attr='text()' />\n       <output name='link' xpath='//a' attr='href' />\n   </get>\n\n2. POST Form Submission - Submits form data:\n   <post formIndex='0'>\n       <formValue name='username' value='$(Username)' />\n       <formValue name='password' value='$(Password)' />\n       <output name='result' xpath='//div[@class=\"message\"]' attr='text()' />\n   </post>\n\n3. Conditional Execution:\n   <if property='$(ShouldLogin)' value='true'>\n       <call target='Login' />\n   </if>\n\n4. Call Another Target:\n   <call target='TargetName' />\n\nOutput Extraction Attributes:\n- name: Output variable name\n- xpath: XPath selector\n- attr: Attribute to extract ('text()' for inner text, or attribute name like 'href')\n- regex: Optional regex pattern\n- isMultipleValue: Extract all matching values\n- expectedValue: Validate extracted value\n\nVariables: Use $(InputName) syntax for substitution."
+                    },
+                    "inputs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Array of key=value pairs for script variable substitution. Example: ['BaseUrl=https://example.com', 'Username=admin', 'Password=secret']. These values replace $(Key) placeholders in the script."
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "Name of the target to execute. If omitted, uses the defaultTarget specified in InteractConfig."
+                    }
+                },
+                "required": ["script"]
+            }
+            """;
         }
 
         private static Dictionary<string, ToolParameterMetadata> GetOutputMetadata()
@@ -310,15 +328,14 @@ namespace NetInteractor.Mcp
             };
         }
 
-        private static NameValueCollection ParseInputs(string? inputs)
+        private static NameValueCollection ParseInputs(string[]? inputs)
         {
             var result = new NameValueCollection();
             
-            if (string.IsNullOrEmpty(inputs))
+            if (inputs == null || inputs.Length == 0)
                 return result;
 
-            var pairs = inputs.Split(',');
-            foreach (var pair in pairs)
+            foreach (var pair in inputs)
             {
                 var keyValue = pair.Split(['='], 2);
                 if (keyValue.Length == 2)
@@ -330,10 +347,10 @@ namespace NetInteractor.Mcp
             return result;
         }
 
-        private static string FormatOutputs(NameValueCollection? outputs)
+        private static JsonNode? ConvertOutputsToJsonNode(NameValueCollection? outputs)
         {
             if (outputs == null || outputs.Count == 0)
-                return "{}";
+                return JsonNode.Parse("{}");
 
             var dict = new Dictionary<string, string>();
             foreach (string? key in outputs.AllKeys)
@@ -343,7 +360,7 @@ namespace NetInteractor.Mcp
                     dict[key] = outputs[key] ?? string.Empty;
                 }
             }
-            return JsonSerializer.Serialize(dict);
+            return JsonNode.Parse(JsonSerializer.Serialize(dict));
         }
     }
 
