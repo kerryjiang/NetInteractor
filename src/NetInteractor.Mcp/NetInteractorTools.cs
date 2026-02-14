@@ -350,17 +350,17 @@ namespace NetInteractor.Mcp
         private static JsonNode? ConvertOutputsToJsonNode(NameValueCollection? outputs)
         {
             if (outputs == null || outputs.Count == 0)
-                return JsonNode.Parse("{}");
+                return new JsonObject();
 
-            var dict = new Dictionary<string, string>();
+            var jsonObject = new JsonObject();
             foreach (string? key in outputs.AllKeys)
             {
                 if (key != null)
                 {
-                    dict[key] = outputs[key] ?? string.Empty;
+                    jsonObject[key] = outputs[key] ?? string.Empty;
                 }
             }
-            return JsonNode.Parse(JsonSerializer.Serialize(dict));
+            return jsonObject;
         }
     }
 
