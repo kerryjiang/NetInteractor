@@ -196,7 +196,7 @@ namespace NetInteractor.Mcp
                 return node.InnerText?.Trim();
             }
 
-            return node.GetAttributeValue(attribute, null);
+            return node.GetAttributeValue(attribute, string.Empty) is { Length: > 0 } value ? value : null;
         }
 
         private static System.Collections.Generic.Dictionary<string, string>? ConvertOutputs(NameValueCollection outputs)
