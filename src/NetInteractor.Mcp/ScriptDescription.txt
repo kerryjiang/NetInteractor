@@ -1,0 +1,95 @@
+XML script defining the web automation workflow.
+
+## Script Structure
+
+<InteractConfig defaultTarget='TargetName'>
+    <target name='TargetName'>
+        <!-- Action elements go here -->
+    </target>
+</InteractConfig>
+
+## Target Element
+
+Targets are named workflow steps. The 'defaultTarget' attribute specifies which target runs first.
+Targets can call other targets using the <call> action for modular workflows.
+
+## Supported Action Types
+
+### 1. GET Request (<get>)
+Fetches a web page via HTTP GET and optionally extracts data.
+
+Attributes:
+- url (required): URL to fetch. Supports $(Variable) substitution.
+- expectedHttpStatusCodes: Comma-separated valid status codes (default: 200).
+
+Child Elements:
+- <output>: Extract data from the response (see Output Extraction).
+
+Example:
+<get url='$(BaseUrl)/products'>
+    <output name='pageTitle' xpath='//h1' attr='text()' />
+</get>
+
+### 2. POST Form Submission (<post>)
+Submits an HTML form. Must be preceded by a GET to load the page with the form.
+
+Attributes (use ONE to identify the form):
+- formIndex: Zero-based index of form on page (e.g., formIndex='0').
+- formName: The 'name' attribute of the form element.
+- action: The 'action' attribute/URL of the form.
+- clientID: The 'id' attribute of the form element.
+
+Child Elements:
+- <formValue name='fieldName' value='fieldValue' />: Set form field values.
+- <output>: Extract data from the response after submission.
+
+Example:
+<post formIndex='0'>
+    <formValue name='username' value='$(Username)' />
+    <formValue name='password' value='$(Password)' />
+</post>
+
+### 3. Conditional Execution (<if>)
+Executes child action only when a condition is met.
+
+Attributes:
+- property (required): Input variable to check. Use $(VariableName) syntax.
+- value (required): Expected value to match.
+
+Example:
+<if property='$(NeedsAuth)' value='true'>
+    <call target='LoginWorkflow' />
+</if>
+
+### 4. Call Another Target (<call>)
+Executes another named target, enabling modular workflows.
+
+Attributes:
+- target (required): Name of the target to execute.
+
+Example:
+<call target='ExtractProductDetails' />
+
+## Output Extraction (<output>)
+
+Extracts data from HTML responses using XPath.
+
+Attributes:
+- name (required): Variable name for extracted value.
+- xpath (required): XPath expression to select element(s).
+- attr (required): What to extract ('text()' for inner text, or attribute name like 'href').
+- regex: Optional regex to further extract from the selected content.
+- isMultipleValue: Set 'true' to extract all matching elements as comma-separated values.
+- expectedValue: Validation - fails if extracted value doesn't match.
+
+Example:
+<output name='title' xpath='//h1' attr='text()' />
+<output name='links' xpath='//a' attr='href' isMultipleValue='true' />
+
+## Variable Substitution
+
+Use $(VariableName) syntax anywhere in attribute values.
+Variables are provided via the 'inputs' parameter as key-value pairs.
+
+Example:
+<get url='$(BaseUrl)/api/$(Endpoint)?id=$(ItemId)' />

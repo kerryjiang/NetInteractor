@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <Authors>Kerry Jiang</Authors>
+    <Description>MCP (Model Context Protocol) Server Tools for NetInteractor - enables AI agents like GitHub Copilot and Claude to execute web automation scripts.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageTags>Web;Automation;MCP;ModelContextProtocol;AI;Copilot;Claude;WebAutomation;LLM;Tools</PackageTags>
+    <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <PackageReadmeFile>v$(PackageVersion).md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <None Include="../../releaseNotes/v$(PackageVersion).md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NetInteractor/NetInteractor.csproj" />
+    <ProjectReference Include="../NetInteractor.Playwright/NetInteractor.Playwright.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ScriptDescription.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetInteractor.Mcp.Test" />
+  </ItemGroup>
+</Project>
