@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using NetInteractor.WebAccessors;
+using NetInteractor.Playwright;
 
 namespace NetInteractor.Mcp
 {
@@ -223,7 +223,7 @@ namespace NetInteractor.Mcp
         /// <summary>
         /// Internal method for testing - executes a script and returns the result.
         /// </summary>
-        internal async Task<InteractionResult> ExecuteScriptInternalAsync(
+        private async Task<InteractionResult> ExecuteScriptInternalAsync(
             string script,
             NameValueCollection? inputs = null,
             string? target = null)

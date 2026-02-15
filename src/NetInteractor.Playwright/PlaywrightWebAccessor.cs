@@ -10,7 +10,7 @@ using System.Text;
 using Microsoft.Playwright;
 using NetInteractor.Config;
 
-namespace NetInteractor.WebAccessors
+namespace NetInteractor.Playwright
 {
     public class PlaywrightWebAccessor : IWebAccessor, IAsyncDisposable
     {

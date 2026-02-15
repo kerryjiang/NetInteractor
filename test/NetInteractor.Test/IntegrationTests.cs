@@ -9,6 +9,7 @@ using NetInteractor.Config;
 using NetInteractor.WebAccessors;
 using NetInteractor.Test.TestWebApp;
 using Xunit;
+using NetInteractor.Playwright;
 
 namespace NetInteractor.Test
 {

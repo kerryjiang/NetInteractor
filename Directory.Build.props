@@ -1,7 +1,17 @@
 <Project>
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <Authors>Kerry Jiang</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageTags>Web;Automation;Html;Scraping;Testing;HttpClient;XPath;WebAutomation;FormSubmission;Workflow</PackageTags>
+    <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl> 
   </PropertyGroup>
+  <PropertyGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <PackageReadmeFile>v$(PackageVersion).md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
+    <None Include="../../releaseNotes/v$(PackageVersion).md" Pack="true" PackagePath="/" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
   </ItemGroup>

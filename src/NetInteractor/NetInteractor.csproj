@@ -1,17 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Authors>Kerry Jiang</Authors>
     <Description>A powerful web operation automation library for .NET that enables you to define and execute complex web interactions using simple XML scripts. Supports web testing, scraping, form automation, and workflow orchestration.</Description>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageTags>Web;Automation;Html;Scraping;Testing;HttpClient;XPath;WebAutomation;FormSubmission;Workflow</PackageTags>
-    <RepositoryUrl>https://github.com/kerryjiang/NetInteractor.git</RepositoryUrl>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
-    <PackageReadmeFile>v$(PackageVersion).md</PackageReadmeFile>
-  </PropertyGroup>
-  <ItemGroup Condition="'$(IncludeReleaseNotes)' == 'true'">
-    <None Include="../../releaseNotes/v$(PackageVersion).md" Pack="true" PackagePath="/" />
-  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" />
   </ItemGroup>
