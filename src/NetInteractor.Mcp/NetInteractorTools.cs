@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -248,30 +249,35 @@ namespace NetInteractor.Mcp
         /// </summary>
         private static JsonElement GetInputMetadata()
         {
-            var schemaJson = """
+            var schema = new JsonObject
             {
-                "type": "object",
-                "properties": {
-                    "script": {
-                        "type": "string",
-                        "description": "XML script defining the web automation workflow.\n\n## Script Structure\n\n<InteractConfig defaultTarget='TargetName'>\n    <target name='TargetName'>\n        <!-- Action elements go here -->\n    </target>\n    <target name='AnotherTarget'>\n        <!-- Additional targets -->\n    </target>\n</InteractConfig>\n\n## Target Element\n\nTargets are named workflow steps. The 'defaultTarget' attribute specifies which target runs first.\nTargets can call other targets using the <call> action for modular workflows.\n\n## Supported Action Types\n\n### 1. GET Request (<get>)\nFetches a web page via HTTP GET and optionally extracts data.\n\nAttributes:\n- url (required): URL to fetch. Supports $(Variable) substitution.\n- expectedHttpStatusCodes: Comma-separated valid status codes (default: 200).\n\nChild Elements:\n- <output>: Extract data from the response (see Output Extraction).\n\nExample:\n<get url='$(BaseUrl)/products'>\n    <output name='pageTitle' xpath='//h1' attr='text()' />\n    <output name='productCount' xpath='//div[@class=\"product\"]' attr='text()' isMultipleValue='true' />\n</get>\n\n### 2. POST Form Submission (<post>)\nSubmits an HTML form. Must be preceded by a GET to load the page with the form.\n\nAttributes (use ONE to identify the form):\n- formIndex: Zero-based index of form on page (e.g., formIndex='0' for first form).\n- formName: The 'name' attribute of the form element.\n- action: The 'action' attribute/URL of the form.\n- clientID: The 'id' attribute of the form element.\n\nChild Elements:\n- <formValue>: Set form field values.\n  - name (required): Form field name.\n  - value (required): Value to set. Supports $(Variable) substitution.\n- <output>: Extract data from the response after submission.\n\nExample:\n<post formIndex='0'>\n    <formValue name='username' value='$(Username)' />\n    <formValue name='password' value='$(Password)' />\n    <output name='loginResult' xpath='//div[@class=\"message\"]' attr='text()' />\n</post>\n\n### 3. Conditional Execution (<if>)\nExecutes child action only when a condition is met.\n\nAttributes:\n- property (required): Input variable to check. Use $(VariableName) syntax.\n- value (required): Expected value to match.\n\nChild Elements: Any single action element (get, post, call, if).\n\nExample:\n<if property='$(NeedsAuth)' value='true'>\n    <call target='LoginWorkflow' />\n</if>\n\n### 4. Call Another Target (<call>)\nExecutes another named target, enabling modular workflows.\n\nAttributes:\n- target (required): Name of the target to execute.\n\nExample:\n<call target='ExtractProductDetails' />\n\n## Output Extraction (<output>)\n\nExtracts data from HTML responses using XPath.\n\nAttributes:\n- name (required): Variable name for extracted value.\n- xpath (required): XPath expression to select element(s).\n- attr (required): What to extract:\n  - 'text()': Inner text content.\n  - Any attribute name: e.g., 'href', 'src', 'class'.\n- regex: Optional regex to further extract from the selected content.\n- isMultipleValue: Set 'true' to extract all matching elements as comma-separated values.\n- expectedValue: Validation - fails if extracted value doesn't match.\n\nExamples:\n<output name='title' xpath='//h1' attr='text()' />\n<output name='imageUrl' xpath='//img[@id=\"main\"]' attr='src' />\n<output name='price' xpath='//span[@class=\"price\"]' attr='text()' regex='\\$([\\d.]+)' />\n<output name='links' xpath='//a[@class=\"item\"]' attr='href' isMultipleValue='true' />\n\n## Variable Substitution\n\nUse $(VariableName) syntax anywhere in attribute values. Variables are provided via the 'inputs' parameter as key-value pairs.\n\nExample:\n<get url='$(BaseUrl)/api/$(Endpoint)?id=$(ItemId)' />"
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["script"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = BuildScriptDescription()
                     },
-                    "inputs": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
+                    ["inputs"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["additionalProperties"] = new JsonObject
+                        {
+                            ["type"] = "string"
                         },
-                        "description": "Object with key-value string pairs for script variable substitution. Example: {\"BaseUrl\": \"https://example.com\", \"Username\": \"admin\", \"Password\": \"secret\"}. These values replace $(Key) placeholders in the script."
+                        ["description"] = "Object with key-value string pairs for script variable substitution. Example: {\"BaseUrl\": \"https://example.com\", \"Username\": \"admin\", \"Password\": \"secret\"}. These values replace $(Key) placeholders in the script."
                     },
-                    "target": {
-                        "type": "string",
-                        "description": "Name of the target to execute. If omitted, uses the defaultTarget specified in InteractConfig."
+                    ["target"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "Name of the target to execute. If omitted, uses the defaultTarget specified in InteractConfig."
                     }
                 },
-                "required": ["script"]
-            }
-            """;
-            return JsonDocument.Parse(schemaJson).RootElement;
+                ["required"] = new JsonArray { "script" }
+            };
+
+            return JsonDocument.Parse(schema.ToJsonString()).RootElement;
         }
 
         /// <summary>
@@ -279,34 +285,158 @@ namespace NetInteractor.Mcp
         /// </summary>
         private static JsonElement GetOutputMetadata()
         {
-            var schemaJson = """
+            var schema = new JsonObject
             {
-                "type": "object",
-                "properties": {
-                    "Ok": {
-                        "type": "boolean",
-                        "description": "True if the script execution completed successfully, false if any action failed"
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["Ok"] = new JsonObject
+                    {
+                        ["type"] = "boolean",
+                        ["description"] = "True if the script execution completed successfully, false if any action failed"
                     },
-                    "Message": {
-                        "type": "string",
-                        "description": "Descriptive message about the result, especially useful for errors"
+                    ["Message"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "Descriptive message about the result, especially useful for errors"
                     },
-                    "Outputs": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
+                    ["Outputs"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["additionalProperties"] = new JsonObject
+                        {
+                            ["type"] = "string"
                         },
-                        "description": "Object containing all extracted output values defined by <output> elements in the script. Keys are output names, values are extracted strings."
+                        ["description"] = "Object containing all extracted output values defined by <output> elements in the script. Keys are output names, values are extracted strings."
                     },
-                    "Target": {
-                        "type": "string",
-                        "description": "The name of the next target to execute (used for workflow chaining)"
+                    ["Target"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "The name of the next target to execute (used for workflow chaining)"
                     }
                 },
-                "required": ["Ok"]
-            }
-            """;
-            return JsonDocument.Parse(schemaJson).RootElement;
+                ["required"] = new JsonArray { "Ok" }
+            };
+
+            return JsonDocument.Parse(schema.ToJsonString()).RootElement;
+        }
+
+        /// <summary>
+        /// Builds the comprehensive script description for AI agents.
+        /// </summary>
+        private static string BuildScriptDescription()
+        {
+            var sb = new StringBuilder();
+            
+            sb.AppendLine("XML script defining the web automation workflow.");
+            sb.AppendLine();
+            sb.AppendLine("## Script Structure");
+            sb.AppendLine();
+            sb.AppendLine("<InteractConfig defaultTarget='TargetName'>");
+            sb.AppendLine("    <target name='TargetName'>");
+            sb.AppendLine("        <!-- Action elements go here -->");
+            sb.AppendLine("    </target>");
+            sb.AppendLine("</InteractConfig>");
+            sb.AppendLine();
+            sb.AppendLine("## Target Element");
+            sb.AppendLine();
+            sb.AppendLine("Targets are named workflow steps. The 'defaultTarget' attribute specifies which target runs first.");
+            sb.AppendLine("Targets can call other targets using the <call> action for modular workflows.");
+            sb.AppendLine();
+            sb.AppendLine("## Supported Action Types");
+            sb.AppendLine();
+            
+            // GET action
+            sb.AppendLine("### 1. GET Request (<get>)");
+            sb.AppendLine("Fetches a web page via HTTP GET and optionally extracts data.");
+            sb.AppendLine();
+            sb.AppendLine("Attributes:");
+            sb.AppendLine("- url (required): URL to fetch. Supports $(Variable) substitution.");
+            sb.AppendLine("- expectedHttpStatusCodes: Comma-separated valid status codes (default: 200).");
+            sb.AppendLine();
+            sb.AppendLine("Child Elements:");
+            sb.AppendLine("- <output>: Extract data from the response (see Output Extraction).");
+            sb.AppendLine();
+            sb.AppendLine("Example:");
+            sb.AppendLine("<get url='$(BaseUrl)/products'>");
+            sb.AppendLine("    <output name='pageTitle' xpath='//h1' attr='text()' />");
+            sb.AppendLine("</get>");
+            sb.AppendLine();
+            
+            // POST action
+            sb.AppendLine("### 2. POST Form Submission (<post>)");
+            sb.AppendLine("Submits an HTML form. Must be preceded by a GET to load the page with the form.");
+            sb.AppendLine();
+            sb.AppendLine("Attributes (use ONE to identify the form):");
+            sb.AppendLine("- formIndex: Zero-based index of form on page (e.g., formIndex='0').");
+            sb.AppendLine("- formName: The 'name' attribute of the form element.");
+            sb.AppendLine("- action: The 'action' attribute/URL of the form.");
+            sb.AppendLine("- clientID: The 'id' attribute of the form element.");
+            sb.AppendLine();
+            sb.AppendLine("Child Elements:");
+            sb.AppendLine("- <formValue name='fieldName' value='fieldValue' />: Set form field values.");
+            sb.AppendLine("- <output>: Extract data from the response after submission.");
+            sb.AppendLine();
+            sb.AppendLine("Example:");
+            sb.AppendLine("<post formIndex='0'>");
+            sb.AppendLine("    <formValue name='username' value='$(Username)' />");
+            sb.AppendLine("    <formValue name='password' value='$(Password)' />");
+            sb.AppendLine("</post>");
+            sb.AppendLine();
+            
+            // IF action
+            sb.AppendLine("### 3. Conditional Execution (<if>)");
+            sb.AppendLine("Executes child action only when a condition is met.");
+            sb.AppendLine();
+            sb.AppendLine("Attributes:");
+            sb.AppendLine("- property (required): Input variable to check. Use $(VariableName) syntax.");
+            sb.AppendLine("- value (required): Expected value to match.");
+            sb.AppendLine();
+            sb.AppendLine("Example:");
+            sb.AppendLine("<if property='$(NeedsAuth)' value='true'>");
+            sb.AppendLine("    <call target='LoginWorkflow' />");
+            sb.AppendLine("</if>");
+            sb.AppendLine();
+            
+            // CALL action
+            sb.AppendLine("### 4. Call Another Target (<call>)");
+            sb.AppendLine("Executes another named target, enabling modular workflows.");
+            sb.AppendLine();
+            sb.AppendLine("Attributes:");
+            sb.AppendLine("- target (required): Name of the target to execute.");
+            sb.AppendLine();
+            sb.AppendLine("Example:");
+            sb.AppendLine("<call target='ExtractProductDetails' />");
+            sb.AppendLine();
+            
+            // Output extraction
+            sb.AppendLine("## Output Extraction (<output>)");
+            sb.AppendLine();
+            sb.AppendLine("Extracts data from HTML responses using XPath.");
+            sb.AppendLine();
+            sb.AppendLine("Attributes:");
+            sb.AppendLine("- name (required): Variable name for extracted value.");
+            sb.AppendLine("- xpath (required): XPath expression to select element(s).");
+            sb.AppendLine("- attr (required): What to extract ('text()' for inner text, or attribute name like 'href').");
+            sb.AppendLine("- regex: Optional regex to further extract from the selected content.");
+            sb.AppendLine("- isMultipleValue: Set 'true' to extract all matching elements as comma-separated values.");
+            sb.AppendLine("- expectedValue: Validation - fails if extracted value doesn't match.");
+            sb.AppendLine();
+            sb.AppendLine("Example:");
+            sb.AppendLine("<output name='title' xpath='//h1' attr='text()' />");
+            sb.AppendLine("<output name='links' xpath='//a' attr='href' isMultipleValue='true' />");
+            sb.AppendLine();
+            
+            // Variable substitution
+            sb.AppendLine("## Variable Substitution");
+            sb.AppendLine();
+            sb.AppendLine("Use $(VariableName) syntax anywhere in attribute values.");
+            sb.AppendLine("Variables are provided via the 'inputs' parameter as key-value pairs.");
+            sb.AppendLine();
+            sb.AppendLine("Example:");
+            sb.AppendLine("<get url='$(BaseUrl)/api/$(Endpoint)?id=$(ItemId)' />");
+            
+            return sb.ToString();
         }
 
         private static NameValueCollection ParseInputsFromJsonElement(JsonElement inputsElement)
