@@ -277,7 +277,7 @@ namespace NetInteractor.Mcp
                 ["required"] = new JsonArray { "script" }
             };
 
-            return JsonDocument.Parse(schema.ToJsonString()).RootElement;
+            return JsonSerializer.SerializeToElement(schema);
         }
 
         /// <summary>
@@ -318,7 +318,7 @@ namespace NetInteractor.Mcp
                 ["required"] = new JsonArray { "Ok" }
             };
 
-            return JsonDocument.Parse(schema.ToJsonString()).RootElement;
+            return JsonSerializer.SerializeToElement(schema);
         }
 
         /// <summary>
@@ -327,7 +327,6 @@ namespace NetInteractor.Mcp
         private static string BuildScriptDescription()
         {
             var sb = new StringBuilder();
-            
             sb.AppendLine("XML script defining the web automation workflow.");
             sb.AppendLine();
             sb.AppendLine("## Script Structure");
