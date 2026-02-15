@@ -1,5 +1,11 @@
-using System.Collections.Specialized;
+#nullable enable
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
+using Moq;
 using NetInteractor.Mcp;
 using NetInteractor.Test.TestWebApp;
 using NetInteractor.WebAccessors;
@@ -12,6 +18,7 @@ namespace NetInteractor.Mcp.Test
         private readonly TestWebApplicationFactory _factory;
         private readonly string _baseUrl;
         private readonly NetInteractorTool _tool;
+        private readonly Mock<McpServer> _mockServer;
 
         public NetInteractorToolTests(TestWebApplicationFixture fixture)
         {
@@ -19,10 +26,52 @@ namespace NetInteractor.Mcp.Test
             _baseUrl = fixture.Factory.ServerUrl;
             // Use HttpClientWebAccessor for tests since Playwright requires browser installation
             _tool = new NetInteractorTool(new HttpClientWebAccessor());
+            _mockServer = new Mock<McpServer>();
+        }
+
+        private RequestContext<CallToolRequestParams> CreateRequestContext(IDictionary<string, JsonElement>? arguments = null)
+        {
+            var jsonRpcRequest = new JsonRpcRequest
+            {
+                Id = new RequestId("test-id"),
+                Method = "tools/call",
+                Params = null
+            };
+
+            var context = new RequestContext<CallToolRequestParams>(_mockServer.Object, jsonRpcRequest)
+            {
+                Params = new CallToolRequestParams
+                {
+                    Name = "netinteractor_execute_script",
+                    Arguments = arguments
+                }
+            };
+
+            return context;
+        }
+
+        private static IDictionary<string, JsonElement> CreateArguments(string script, IDictionary<string, string>? inputs = null, string? target = null)
+        {
+            var args = new Dictionary<string, JsonElement>
+            {
+                ["script"] = JsonSerializer.SerializeToElement(script)
+            };
+
+            if (inputs != null)
+            {
+                args["inputs"] = JsonSerializer.SerializeToElement(inputs);
+            }
+
+            if (target != null)
+            {
+                args["target"] = JsonSerializer.SerializeToElement(target);
+            }
+
+            return args;
         }
 
         [Fact]
-        public async Task ExecuteScriptInternalAsync_SimpleGetScript_ExtractsTitle()
+        public async Task InvokeAsync_SimpleGetScript_ExtractsTitle()
         {
             // Arrange
             var script = $@"<InteractConfig defaultTarget='Main'>
@@ -33,17 +82,20 @@ namespace NetInteractor.Mcp.Test
                 </target>
             </InteractConfig>";
 
+            var context = CreateRequestContext(CreateArguments(script));
+
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(script);
+            var result = await _tool.InvokeAsync(context, CancellationToken.None);
 
             // Assert
-            Assert.True(result.Ok, result.Message);
-            Assert.NotNull(result.Outputs);
-            Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+            Assert.NotNull(result);
+            Assert.False(result.IsError);
+            Assert.NotNull(result.StructuredContent);
+            Assert.Equal("Welcome to Test Shop", result.StructuredContent["title"]?.ToString());
         }
 
         [Fact]
-        public async Task ExecuteScriptInternalAsync_WithInputs_ExtractsTitle()
+        public async Task InvokeAsync_WithInputs_ExtractsTitle()
         {
             // Arrange
             var script = @"<InteractConfig defaultTarget='Main'>
@@ -54,19 +106,21 @@ namespace NetInteractor.Mcp.Test
                 </target>
             </InteractConfig>";
 
-            var inputs = new NameValueCollection { { "BaseUrl", _baseUrl } };
+            var inputs = new Dictionary<string, string> { { "BaseUrl", _baseUrl } };
+            var context = CreateRequestContext(CreateArguments(script, inputs));
 
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(script, inputs);
+            var result = await _tool.InvokeAsync(context, CancellationToken.None);
 
             // Assert
-            Assert.True(result.Ok, result.Message);
-            Assert.NotNull(result.Outputs);
-            Assert.Equal("Welcome to Test Shop", result.Outputs["title"]);
+            Assert.NotNull(result);
+            Assert.False(result.IsError);
+            Assert.NotNull(result.StructuredContent);
+            Assert.Equal("Welcome to Test Shop", result.StructuredContent["title"]?.ToString());
         }
 
         [Fact]
-        public async Task ExecuteScriptInternalAsync_WithSpecificTarget_ExecutesTarget()
+        public async Task InvokeAsync_WithSpecificTarget_ExecutesTarget()
         {
             // Arrange
             var script = $@"<InteractConfig defaultTarget='Main'>
@@ -82,31 +136,56 @@ namespace NetInteractor.Mcp.Test
                 </target>
             </InteractConfig>";
 
+            var context = CreateRequestContext(CreateArguments(script, target: "Products"));
+
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(script, null, "Products");
+            var result = await _tool.InvokeAsync(context, CancellationToken.None);
 
             // Assert
-            Assert.True(result.Ok, result.Message);
-            Assert.NotNull(result.Outputs);
-            Assert.Equal("Products", result.Outputs["productTitle"]);
+            Assert.NotNull(result);
+            Assert.False(result.IsError);
+            Assert.NotNull(result.StructuredContent);
+            Assert.Equal("Products", result.StructuredContent["productTitle"]?.ToString());
         }
 
         [Fact]
-        public async Task ExecuteScriptInternalAsync_InvalidScript_ReturnsError()
+        public async Task InvokeAsync_InvalidScript_ReturnsError()
         {
             // Arrange
             var invalidScript = @"<Invalid></Script>";
+            var context = CreateRequestContext(CreateArguments(invalidScript));
 
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(invalidScript);
+            var result = await _tool.InvokeAsync(context, CancellationToken.None);
 
             // Assert
-            Assert.False(result.Ok);
-            Assert.NotNull(result.Message);
+            Assert.NotNull(result);
+            Assert.True(result.IsError);
+            Assert.NotNull(result.Content);
+            Assert.NotEmpty(result.Content);
         }
 
         [Fact]
-        public async Task ExecuteScriptInternalAsync_MultipleOutputs_ExtractsAllValues()
+        public async Task InvokeAsync_MissingScript_ReturnsError()
+        {
+            // Arrange - No script argument
+            var context = CreateRequestContext(new Dictionary<string, JsonElement>());
+
+            // Act
+            var result = await _tool.InvokeAsync(context, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.IsError);
+            Assert.NotNull(result.Content);
+            Assert.NotEmpty(result.Content);
+            var textContent = result.Content[0] as TextContentBlock;
+            Assert.NotNull(textContent);
+            Assert.Contains("script", textContent.Text.ToLower());
+        }
+
+        [Fact]
+        public async Task InvokeAsync_MultipleOutputs_ExtractsAllValues()
         {
             // Arrange
             var script = $@"<InteractConfig defaultTarget='Main'>
@@ -118,14 +197,17 @@ namespace NetInteractor.Mcp.Test
                 </target>
             </InteractConfig>";
 
+            var context = CreateRequestContext(CreateArguments(script));
+
             // Act
-            var result = await _tool.ExecuteScriptInternalAsync(script);
+            var result = await _tool.InvokeAsync(context, CancellationToken.None);
 
             // Assert
-            Assert.True(result.Ok, result.Message);
-            Assert.NotNull(result.Outputs);
-            Assert.Equal("Data Extraction Test", result.Outputs["title"]);
-            Assert.Equal("/images/test.png", result.Outputs["imageSrc"]);
+            Assert.NotNull(result);
+            Assert.False(result.IsError);
+            Assert.NotNull(result.StructuredContent);
+            Assert.Equal("Data Extraction Test", result.StructuredContent["title"]?.ToString());
+            Assert.Equal("/images/test.png", result.StructuredContent["imageSrc"]?.ToString());
         }
 
         [Fact]
