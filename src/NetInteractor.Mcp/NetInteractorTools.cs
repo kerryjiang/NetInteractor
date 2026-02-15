@@ -333,7 +333,8 @@ namespace NetInteractor.Mcp
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null)
             {
-                return "XML script defining the web automation workflow. See documentation for details.";
+                // Fallback message if embedded resource is missing (should not happen in normal builds)
+                return "XML script defining the web automation workflow. Warning: ScriptDescription.txt embedded resource not found. Please ensure the resource is properly embedded in the build.";
             }
             
             using var reader = new StreamReader(stream);
