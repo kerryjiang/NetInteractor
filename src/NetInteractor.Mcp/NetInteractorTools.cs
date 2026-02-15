@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Text;
+using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -257,7 +258,7 @@ namespace NetInteractor.Mcp
                     ["script"] = new JsonObject
                     {
                         ["type"] = "string",
-                        ["description"] = BuildScriptDescription()
+                        ["description"] = LoadScriptDescription()
                     },
                     ["inputs"] = new JsonObject
                     {
@@ -322,120 +323,21 @@ namespace NetInteractor.Mcp
         }
 
         /// <summary>
-        /// Builds the comprehensive script description for AI agents.
+        /// Loads the script description from the embedded resource file.
         /// </summary>
-        private static string BuildScriptDescription()
+        private static string LoadScriptDescription()
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("XML script defining the web automation workflow.");
-            sb.AppendLine();
-            sb.AppendLine("## Script Structure");
-            sb.AppendLine();
-            sb.AppendLine("<InteractConfig defaultTarget='TargetName'>");
-            sb.AppendLine("    <target name='TargetName'>");
-            sb.AppendLine("        <!-- Action elements go here -->");
-            sb.AppendLine("    </target>");
-            sb.AppendLine("</InteractConfig>");
-            sb.AppendLine();
-            sb.AppendLine("## Target Element");
-            sb.AppendLine();
-            sb.AppendLine("Targets are named workflow steps. The 'defaultTarget' attribute specifies which target runs first.");
-            sb.AppendLine("Targets can call other targets using the <call> action for modular workflows.");
-            sb.AppendLine();
-            sb.AppendLine("## Supported Action Types");
-            sb.AppendLine();
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = "NetInteractor.Mcp.ScriptDescription.txt";
             
-            // GET action
-            sb.AppendLine("### 1. GET Request (<get>)");
-            sb.AppendLine("Fetches a web page via HTTP GET and optionally extracts data.");
-            sb.AppendLine();
-            sb.AppendLine("Attributes:");
-            sb.AppendLine("- url (required): URL to fetch. Supports $(Variable) substitution.");
-            sb.AppendLine("- expectedHttpStatusCodes: Comma-separated valid status codes (default: 200).");
-            sb.AppendLine();
-            sb.AppendLine("Child Elements:");
-            sb.AppendLine("- <output>: Extract data from the response (see Output Extraction).");
-            sb.AppendLine();
-            sb.AppendLine("Example:");
-            sb.AppendLine("<get url='$(BaseUrl)/products'>");
-            sb.AppendLine("    <output name='pageTitle' xpath='//h1' attr='text()' />");
-            sb.AppendLine("</get>");
-            sb.AppendLine();
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
+            {
+                return "XML script defining the web automation workflow. See documentation for details.";
+            }
             
-            // POST action
-            sb.AppendLine("### 2. POST Form Submission (<post>)");
-            sb.AppendLine("Submits an HTML form. Must be preceded by a GET to load the page with the form.");
-            sb.AppendLine();
-            sb.AppendLine("Attributes (use ONE to identify the form):");
-            sb.AppendLine("- formIndex: Zero-based index of form on page (e.g., formIndex='0').");
-            sb.AppendLine("- formName: The 'name' attribute of the form element.");
-            sb.AppendLine("- action: The 'action' attribute/URL of the form.");
-            sb.AppendLine("- clientID: The 'id' attribute of the form element.");
-            sb.AppendLine();
-            sb.AppendLine("Child Elements:");
-            sb.AppendLine("- <formValue name='fieldName' value='fieldValue' />: Set form field values.");
-            sb.AppendLine("- <output>: Extract data from the response after submission.");
-            sb.AppendLine();
-            sb.AppendLine("Example:");
-            sb.AppendLine("<post formIndex='0'>");
-            sb.AppendLine("    <formValue name='username' value='$(Username)' />");
-            sb.AppendLine("    <formValue name='password' value='$(Password)' />");
-            sb.AppendLine("</post>");
-            sb.AppendLine();
-            
-            // IF action
-            sb.AppendLine("### 3. Conditional Execution (<if>)");
-            sb.AppendLine("Executes child action only when a condition is met.");
-            sb.AppendLine();
-            sb.AppendLine("Attributes:");
-            sb.AppendLine("- property (required): Input variable to check. Use $(VariableName) syntax.");
-            sb.AppendLine("- value (required): Expected value to match.");
-            sb.AppendLine();
-            sb.AppendLine("Example:");
-            sb.AppendLine("<if property='$(NeedsAuth)' value='true'>");
-            sb.AppendLine("    <call target='LoginWorkflow' />");
-            sb.AppendLine("</if>");
-            sb.AppendLine();
-            
-            // CALL action
-            sb.AppendLine("### 4. Call Another Target (<call>)");
-            sb.AppendLine("Executes another named target, enabling modular workflows.");
-            sb.AppendLine();
-            sb.AppendLine("Attributes:");
-            sb.AppendLine("- target (required): Name of the target to execute.");
-            sb.AppendLine();
-            sb.AppendLine("Example:");
-            sb.AppendLine("<call target='ExtractProductDetails' />");
-            sb.AppendLine();
-            
-            // Output extraction
-            sb.AppendLine("## Output Extraction (<output>)");
-            sb.AppendLine();
-            sb.AppendLine("Extracts data from HTML responses using XPath.");
-            sb.AppendLine();
-            sb.AppendLine("Attributes:");
-            sb.AppendLine("- name (required): Variable name for extracted value.");
-            sb.AppendLine("- xpath (required): XPath expression to select element(s).");
-            sb.AppendLine("- attr (required): What to extract ('text()' for inner text, or attribute name like 'href').");
-            sb.AppendLine("- regex: Optional regex to further extract from the selected content.");
-            sb.AppendLine("- isMultipleValue: Set 'true' to extract all matching elements as comma-separated values.");
-            sb.AppendLine("- expectedValue: Validation - fails if extracted value doesn't match.");
-            sb.AppendLine();
-            sb.AppendLine("Example:");
-            sb.AppendLine("<output name='title' xpath='//h1' attr='text()' />");
-            sb.AppendLine("<output name='links' xpath='//a' attr='href' isMultipleValue='true' />");
-            sb.AppendLine();
-            
-            // Variable substitution
-            sb.AppendLine("## Variable Substitution");
-            sb.AppendLine();
-            sb.AppendLine("Use $(VariableName) syntax anywhere in attribute values.");
-            sb.AppendLine("Variables are provided via the 'inputs' parameter as key-value pairs.");
-            sb.AppendLine();
-            sb.AppendLine("Example:");
-            sb.AppendLine("<get url='$(BaseUrl)/api/$(Endpoint)?id=$(ItemId)' />");
-            
-            return sb.ToString();
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
 
         private static NameValueCollection ParseInputsFromJsonElement(JsonElement inputsElement)

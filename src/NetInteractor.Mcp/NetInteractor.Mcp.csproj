@@ -19,6 +19,9 @@
     <ProjectReference Include="../NetInteractor.Playwright/NetInteractor.Playwright.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="ScriptDescription.txt" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
   <ItemGroup>
